@@ -350,25 +350,19 @@ int main( int argc, char* argv[] ) {
 
 	computeScoreStatistics(aTextFile, apNorms, apCipherString);
 
-	std::cout << "Scoring NGrams full set" << std::endl;
-	for (std::unordered_map<unsigned long long, NGram*>::iterator i=apNorms->begin(); i!=apNorms->end(); ++i)
-		std::cout << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << " Mean:" << i->second->_mean << " StdDev:" << i->second->_sigma << std::endl;
+	{
+		long double aLnPerfect=0.0;
+		std::cout << "Scoring NGrams full set" << std::endl;
+		for (std::unordered_map<unsigned long long, NGram*>::iterator i=apNorms->begin(); i!=apNorms->end(); ++i) {
+			std::cout << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << " Mean:" << i->second->_mean << " StdDev:" << i->second->_sigma << std::endl;
+			aLnPerfect-=logl(sqrtl(2.0*M_PI)*i->second->_sigma);
+		}
+		std::cout << "Maxiumum reachable score " << aLnPerfect << std::endl;
+	}
 
 	std::cout << "Testing NGrams cut-off frequency " << aCutOff << std::endl;
 	for (std::unordered_map<unsigned long long, NGram*>::iterator i=apTesters->begin(); i!=apTesters->end(); ++i)
 		std::cout << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << std::endl;
-
-	{
-		std::ostringstream *iLog=new std::ostringstream();
-		std::string aSol="ilikekillingpeoplebecauseitissomuchfunitiamorefunthankillingwildgemeintheforrestbecausemanisthemoatdangertueenamalofalltokillsomethinggivesmethemoatthrillingexperenceitisevenbetterthengettingyourrocksoffwithagirlthebestpartofitiatheewhenidieiwillbereborninparediceandalltheihavekilledwillbecomemyslavesiwillnotgiveyoumynamebecauseyouwilltrytosloidownoratopmycollectingofslavesformyafterlifeebeorietemethhpiti";
-		aSol=aSol.substr(0, apCipherString->length());
-		std::cout << "Sample: " << score(&aSol, apNorms, iLog) << " " << iLog->str() << " " << aSol << std::endl;
-
-		if (aSeed.length()>0)
-			std::cout << "Seed: " << score(&aSeed, apNorms, iLog) << " " << iLog->str() << " " << aSeed << std::endl;
-
-		delete iLog;
-	}
 
 	std::mutex *apMutex=new std::mutex();
 
