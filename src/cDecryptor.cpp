@@ -59,12 +59,15 @@ long double score(const std::string *ipCandidate, const std::unordered_map<unsig
 
 			aLoopScore+=b->second*logl(aP)-logFac(b->second);
 		}
-		if (iLog!=NULL)
-			(*iLog) << aLength << ":" << aLoopScore << " ";
-		if (aNorm->second->_mean<0)
-			aScore+=lnGauss(aLoopScore, aNorm->second->_mean, aNorm->second->_sigma);
-		else
+
+		if (aNorm->second->_mean<0) {
+			long double aLnGaussScore=lnGauss(aLoopScore, aNorm->second->_mean, aNorm->second->_sigma);
+			aScore+=aLnGaussScore;
+			if (iLog!=NULL)
+				(*iLog) << aLength << ":" << aLnGaussScore << " ";
+		} else // at initialization
 			aScore+=aLoopScore;
+
 		aObserved->clear();
 	}
 
@@ -186,14 +189,16 @@ void filterTesters(const long double iCutOff, std::unordered_map<unsigned long l
 			}
 }
 
-void computeScoreStatistics(const std::string& aTextFile, std::unordered_map<unsigned long long, NGram*>* iopNorms, const std::string* ipCipherString) {
+void computeScoreStatistics(const std::string& iTextFile, std::unordered_map<unsigned long long, NGram*>* iopNorms, const std::string* ipCipherString) {
 	std::string* apString = new std::string();
-	std::ifstream myfile(aTextFile);
-	if (myfile.is_open())
-		while (!myfile.eof())
-			myfile >> *apString;
+	std::ifstream aFile(iTextFile);
+	if (aFile.is_open())
+		while (!aFile.eof())
+			aFile >> *apString;
+	else
+		throw "Can not open file";
 
-	myfile.close();
+	aFile.close();
 	std::vector<long double> aScores;
 	for (std::unordered_map<unsigned long long, NGram*>::iterator i=iopNorms->begin(); i != iopNorms->end(); ++i) {
 		aScores.clear();
@@ -207,11 +212,11 @@ void computeScoreStatistics(const std::string& aTextFile, std::unordered_map<uns
 		long double aDouble = 0;
 		for (std::vector<long double>::iterator j = aScores.begin(); j != aScores.end(); ++j)
 			aDouble += (*j);
-		i->second->_mean = aDouble / aScores.size();
+		i->second->_mean=aDouble/aScores.size();
 		aDouble = 0;
 		for (std::vector<long double>::iterator j = aScores.begin(); j != aScores.end(); ++j)
 			aDouble += powl((*j) - i->second->_mean, 2);
-		i->second->_sigma = sqrtl(aDouble / (aScores.size() - 1));
+		i->second->_sigma=sqrtl(aDouble/(aScores.size() - 1));
 	}
 	delete apString;
 }
@@ -354,8 +359,9 @@ int main( int argc, char* argv[] ) {
 		long double aLnPerfect=0.0;
 		std::cout << "Scoring NGrams full set" << std::endl;
 		for (std::unordered_map<unsigned long long, NGram*>::iterator i=apNorms->begin(); i!=apNorms->end(); ++i) {
-			std::cout << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << " Mean:" << i->second->_mean << " StdDev:" << i->second->_sigma << std::endl;
-			aLnPerfect-=logl(sqrtl(2.0*M_PI)*i->second->_sigma);
+			long double aLnNGramPerfect=-logl(sqrtl(2.0*M_PI) * i->second->_sigma);
+			std::cout << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << " Mean:" << i->second->_mean << " StdDev:" << i->second->_sigma << " Perfect: " << aLnNGramPerfect << std::endl;
+			aLnPerfect += aLnNGramPerfect;
 		}
 		std::cout << "Maxiumum reachable score " << aLnPerfect << std::endl;
 	}
@@ -365,6 +371,13 @@ int main( int argc, char* argv[] ) {
 		std::cout << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << std::endl;
 
 	std::mutex *apMutex=new std::mutex();
+
+	if (aSeed.length()>0) {
+		std::ostringstream *iLog=new std::ostringstream();
+		const long double aSeedScore=score(&aSeed, apNorms, iLog);
+		std::cout << "Seed: " << aSeedScore << " " << iLog->str() << " " << aSeed << std::endl;
+		delete iLog;
+	}
 
 	std::string *apString=new std::string(apCipherString->length(), '.');
 	const long double *apWorstScore=new long double(score(apString, apNorms, NULL));
@@ -387,6 +400,7 @@ int main( int argc, char* argv[] ) {
 	delete apCipherString;
 	delete apBestScore;
 	delete apBestSolution;
+	delete apWorstScore;
 
 	return EXIT_SUCCESS;
 }
