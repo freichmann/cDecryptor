@@ -204,7 +204,7 @@ void computeScoreStatistics(const std::string& iTextFile, std::unordered_map<uns
 		aScores.clear();
 		std::unordered_map<unsigned long long, NGram*>* apSubNorm = new std::unordered_map<unsigned long long, NGram*>();
 		apSubNorm->insert(std::pair<unsigned long long, NGram*>(i->first, i->second));
-		for (unsigned long long aPos = 0; aPos < apString->length() - ipCipherString->length(); aPos++) {
+		for (unsigned long long aPos = 0; aPos < apString->length() - ipCipherString->length()+1; aPos++) {
 			std::string aSub = apString->substr(aPos, ipCipherString->length());
 			aScores.push_back(score(&aSub, apSubNorm, nullptr));
 		}
@@ -301,7 +301,7 @@ int main( int argc, char* argv[] ) {
 	std::string aSeed="";
 	unsigned int aThreadsCount=1;
 	long double aCutOff=0.0;
-	long double aRandom=0.0;
+	long double aRandom=1.0;
 
 	{
 		int c;
@@ -360,7 +360,7 @@ int main( int argc, char* argv[] ) {
 		std::cout << "Scoring NGrams full set" << std::endl;
 		for (std::unordered_map<unsigned long long, NGram*>::iterator i=apNorms->begin(); i!=apNorms->end(); ++i) {
 			long double aLnNGramPerfect=-logl(sqrtl(2.0*M_PI) * i->second->_sigma);
-			std::cout << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << " Mean:" << i->second->_mean << " StdDev:" << i->second->_sigma << " Perfect: " << aLnNGramPerfect << std::endl;
+			std::cout << std::setprecision(6) << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << " Mean:" << i->second->_mean << " StdDev:" << i->second->_sigma << " Perfect: " << aLnNGramPerfect << std::endl;
 			aLnPerfect += aLnNGramPerfect;
 		}
 		std::cout << "Maxiumum reachable score " << aLnPerfect << std::endl;
