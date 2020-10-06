@@ -170,22 +170,6 @@ bool checkBest(long double aLoopBestScore, const std::string *ipClear, std::mute
 	return false;
 }
 
-void filterTesters(const long double iCutOff, std::unordered_map<unsigned long long, NGram*>* ipNorms, std::unordered_map<unsigned long long, NGram*>* opTesters) {
-	for (std::unordered_map<unsigned long long, NGram*>::iterator i=ipNorms->begin(); i != ipNorms->end(); ++i)
-		for (std::unordered_map<std::string, unsigned long long>::iterator aNGram = i->second->_NGramMap->begin(); aNGram != i->second->_NGramMap->end(); ++aNGram)
-			if (aNGram->second > iCutOff * i->second->_count) {
-				std::unordered_map<unsigned long long, NGram*>::iterator j=opTesters->find(i->first);
-				NGram* aNorm;
-				if (j == opTesters->end()) {
-					aNorm = new NGram(i->first);
-					opTesters->insert(std::pair<unsigned int, NGram*>(i->first, aNorm));
-				} else
-					aNorm = (*j).second;
-
-				aNorm->add(aNGram->second, aNGram->first);
-			}
-}
-
 void computeScoreStatistics(const std::string& aTextFile, std::unordered_map<unsigned long long, NGram*>* iopNorms, const std::string* ipCipherString) {
 	std::string* apString = new std::string();
 	std::ifstream myfile(aTextFile);
@@ -216,7 +200,7 @@ void computeScoreStatistics(const std::string& aTextFile, std::unordered_map<uns
 	delete apString;
 }
 
-void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::unordered_map<unsigned long long, NGram*> *ipTesters, const std::string& iCipherString, std::mutex *ipMutex, long double *ipBestScore, std::string *ipBestSolution, const long double *ipWorstScore, const std::string &iSeed, const long double iRandom) {
+void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, std::mutex *ipMutex, long double *ipBestScore, std::string *ipBestSolution, const long double *ipWorstScore, const std::string &iSeed, const long double iRandom) {
 	std::unordered_map<char, char> *apSymbolMap=new std::unordered_map<char, char>();
 
 	initMap(iCipherString, apSymbolMap);
@@ -238,25 +222,24 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 			std::string aLoopBestSubstitute;
 			unsigned int aLoopBestPosition;
 
-			for (std::unordered_map<unsigned long long, NGram*>::const_iterator aTester=ipTesters->begin(); aTester!=ipTesters->end(); ++aTester) {
-				std::unordered_map<std::string, unsigned long long>* apTestMap=aTester->second->_NGramMap;
-				unsigned int aLength=aTester->second->_length;
-				for (unsigned int aPos=0; aPos+aLength<iCipherString.length(); aPos++) {
-					const std::string aPrevious=aCandidate.substr(aPos, aLength);
-					for (std::unordered_map<std::string, unsigned long long>::const_iterator aTestNGram=apTestMap->begin(); aTestNGram!=apTestMap->end(); ++aTestNGram) {
-						insertSymbols(iCipherString, apSymbolMap, &aTestNGram->first, aPos);
-						buildClear(iCipherString, apSymbolMap, apClear);
-						long double aCurrentScore=score(apClear, ipNorms, iLog);
+			std::unordered_map<unsigned long long, NGram*>::const_iterator aTester=ipNorms->find(1);
+			std::unordered_map<std::string, unsigned long long>* apTestMap=aTester->second->_NGramMap;
+			unsigned int aLength=aTester->second->_length;
+			for (unsigned int aPos=0; aPos+aLength<iCipherString.length(); aPos++) {
+				const std::string aPrevious=aCandidate.substr(aPos, aLength);
+				for (std::unordered_map<std::string, unsigned long long>::const_iterator aTestNGram=apTestMap->begin(); aTestNGram!=apTestMap->end(); ++aTestNGram) {
+					insertSymbols(iCipherString, apSymbolMap, &aTestNGram->first, aPos);
+					buildClear(iCipherString, apSymbolMap, apClear);
+					long double aCurrentScore=score(apClear, ipNorms, iLog);
 
-						if (aCurrentScore>aLoopBestScore) {
-							aLoopBestScore=aCurrentScore;
-							aLoopBestSubstitute=aTestNGram->first;
-							aLoopBestPosition=aPos;
-							aFoundCandidate=true;
-						}
+					if (aCurrentScore>aLoopBestScore) {
+						aLoopBestScore=aCurrentScore;
+						aLoopBestSubstitute=aTestNGram->first;
+						aLoopBestPosition=aPos;
+						aFoundCandidate=true;
 					}
-					insertSymbols(iCipherString, apSymbolMap, &aPrevious, aPos);
 				}
+				insertSymbols(iCipherString, apSymbolMap, &aPrevious, aPos);
 			}
 
 			if (aFoundCandidate) {
@@ -281,7 +264,6 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 			initMap(iCipherString, apSymbolMap);
 
 		buildClear(iCipherString, apSymbolMap, apClear);
-		std::cout << timeString() << " Thread " << iThread << " Reset with " << *apClear << std::endl;
 	}
 
 	delete iLog;
@@ -295,12 +277,11 @@ int main( int argc, char* argv[] ) {
 	std::string aTextFile;
 	std::string aSeed="";
 	unsigned int aThreadsCount=1;
-	long double aCutOff=0.0;
 	long double aRandom=0.0;
 
 	{
 		int c;
-		while( ( c = getopt(argc, argv, "l:c:t:g:s:w:r:") ) != -1 ) {
+		while( ( c = getopt(argc, argv, "l:c:t:s:w:r:") ) != -1 ) {
 			switch(c) {
 			case 'l':
 				if(optarg)
@@ -322,10 +303,6 @@ int main( int argc, char* argv[] ) {
 				if(optarg)
 					aThreadsCount=atoi(optarg);
 				break;
-			case 'g':
-				if(optarg)
-					aCutOff=std::stold(optarg);
-				break;
 			case 'r':
 				if(optarg)
 					aRandom=std::stold(optarg);
@@ -345,24 +322,16 @@ int main( int argc, char* argv[] ) {
 	std::unordered_map<unsigned long long, NGram*> *apNorms=new std::unordered_map<unsigned long long, NGram*>();
 	readNorms(aNGramsFiles, apNorms);
 
-	std::unordered_map<unsigned long long, NGram*> *apTesters=new std::unordered_map<unsigned long long, NGram*>();
-	filterTesters(aCutOff, apNorms, apTesters);
-
 	computeScoreStatistics(aTextFile, apNorms, apCipherString);
 
 	{
 		long double aLnPerfect=0.0;
-		std::cout << "Scoring NGrams full set" << std::endl;
 		for (std::unordered_map<unsigned long long, NGram*>::iterator i=apNorms->begin(); i!=apNorms->end(); ++i) {
 			std::cout << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << " Mean:" << i->second->_mean << " StdDev:" << i->second->_sigma << std::endl;
 			aLnPerfect-=logl(sqrtl(2.0*M_PI)*i->second->_sigma);
 		}
 		std::cout << "Maxiumum reachable score " << aLnPerfect << std::endl;
 	}
-
-	std::cout << "Testing NGrams cut-off frequency " << aCutOff << std::endl;
-	for (std::unordered_map<unsigned long long, NGram*>::iterator i=apTesters->begin(); i!=apTesters->end(); ++i)
-		std::cout << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << std::endl;
 
 	std::mutex *apMutex=new std::mutex();
 
@@ -374,7 +343,7 @@ int main( int argc, char* argv[] ) {
 
 	std::vector<std::thread> aThreads[aThreadsCount];
 	for (unsigned long long aThread=0; aThread<aThreadsCount; aThread++)
-		aThreads->push_back(std::thread(&hillclimber, aThread, apNorms, apTesters, *apCipherString, apMutex, apBestScore, apBestSolution, apWorstScore, aSeed, aRandom));
+		aThreads->push_back(std::thread(&hillclimber, aThread, apNorms, *apCipherString, apMutex, apBestScore, apBestSolution, apWorstScore, aSeed, aRandom));
 
 	std::cout << timeString() << " " << aThreadsCount << " threads started." << std::endl;
 
@@ -383,7 +352,6 @@ int main( int argc, char* argv[] ) {
 
 	delete apMutex;
 	delete apNorms;
-	delete apTesters;
 	delete apCipherString;
 	delete apBestScore;
 	delete apBestSolution;
