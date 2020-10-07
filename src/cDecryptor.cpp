@@ -219,8 +219,8 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 
 			std::unordered_map<std::string, unsigned long long>* apTestMap=ipNorms->find(1)->second->_NGramMap;
 			for (unsigned int aPos=0; aPos<iCipherString.length(); aPos++) {
-				buildClear(iCipherString, apSymbolMap, apClear);
-				std::string aBestChoiceSoFar=apClear->substr(aPos,1);
+				std::string aBestChoiceSoFar(1, apSymbolMap->find(iCipherString[aPos])->second);
+
 				for (std::unordered_map<std::string, unsigned long long>::const_iterator aTestNGram=apTestMap->begin(); aTestNGram!=apTestMap->end(); ++aTestNGram) {
 					insertSymbols(iCipherString, apSymbolMap, &aTestNGram->first, aPos);
 					buildClear(iCipherString, apSymbolMap, apClear);
@@ -237,9 +237,12 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 
 			if (aLoopImproved) {
 				buildClear(iCipherString, apSymbolMap, apClear);
-				long double aCurrentScore=score(apClear, ipNorms, iLog);
+				long double aVerifiedScore=score(apClear, ipNorms, iLog);
 
-				if (checkBest(aCurrentScore, apClear, ipMutex, ipBestScore, ipBestSolution)) {
+				if (aVerifiedScore!=aLoopBestScore)
+					std::cerr << "Drifting!" << std::endl;
+
+				if (checkBest(aVerifiedScore, apClear, ipMutex, ipBestScore, ipBestSolution)) {
 					std::cout << timeString() << " Thread " << iThread << " " << aLoopBestScore << " ";
 					if (iLog != NULL)
 						std::cout << iLog->str();
