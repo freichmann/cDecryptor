@@ -173,7 +173,7 @@ bool checkBest(long double aLoopBestScore, const std::string *ipClear, std::mute
 	return false;
 }
 
-void computeScoreStatistics(const std::string& aTextFile, std::unordered_map<unsigned long long, NGram*>* iopNorms, const std::string* ipCipherString) {
+void computeScoreStatistics(const std::string& iTextFile, std::unordered_map<unsigned long long, NGram*>* iopNorms, const std::string* ipCipherString) {
 	std::string* apString = new std::string();
 	std::ifstream aFile(iTextFile);
 	if (aFile.is_open())
