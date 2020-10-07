@@ -338,7 +338,7 @@ int main( int argc, char* argv[] ) {
 			std::cout << std::setprecision(6) << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << " Mean:" << i->second->_mean << " StdDev:" << i->second->_sigma << " Perfect: " << aLnNGramPerfect << std::endl;
 			aLnPerfect += aLnNGramPerfect;
 		}
-		std::cout << "Maxiumum reachable score " << aLnPerfect << std::endl;
+		std::cout << "Maximum reachable score " << aLnPerfect << std::endl;
 	}
 
 	std::mutex *apMutex=new std::mutex();
