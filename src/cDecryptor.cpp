@@ -125,8 +125,8 @@ void randomizeMap(std::unordered_map<char, char> *ipUniqueSymbols, const long do
 }
 
 void initMap(const std::string& iCipher, std::unordered_map<char, char> *ipUniqueSymbols) {
-	std::default_random_engine generator;
-	generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+	std::default_random_engine aGenerator;
+	aGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
 	std::uniform_int_distribution<unsigned int> aCharDistribution((unsigned int)'a', (unsigned int)'z');
 
 	ipUniqueSymbols->clear();
@@ -136,7 +136,7 @@ void initMap(const std::string& iCipher, std::unordered_map<char, char> *ipUniqu
 		apSymbols->insert(iCipher[i]);
 
 	for (std::unordered_set<char>::iterator i=apSymbols->begin(); i!=apSymbols->end(); ++i)
-		ipUniqueSymbols->insert(std::pair<char, char>(*i, (char)(aCharDistribution(generator))));
+		ipUniqueSymbols->insert(std::pair<char, char>(*i, (char)(aCharDistribution(aGenerator))));
 
 	delete apSymbols;
 }
@@ -203,6 +203,10 @@ void computeScoreStatistics(const std::string& aTextFile, std::unordered_map<uns
 void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, std::mutex *ipMutex, long double *ipBestScore, std::string *ipBestSolution, const long double *ipWorstScore, const std::string &iSeed, const long double iRandom) {
 	std::unordered_map<char, char> *apSymbolMap=new std::unordered_map<char, char>();
 
+	std::default_random_engine aGenerator;
+	aGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+	std::uniform_int_distribution<unsigned int> aIntDistribution(0, iCipherString.length());
+
 	initMap(iCipherString, apSymbolMap);
 
 	if (iThread==0)
@@ -218,7 +222,9 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 			aLoopImproved=false;
 
 			std::unordered_map<std::string, unsigned long long>* apTestMap=ipNorms->find(1)->second->_NGramMap;
-			for (unsigned int aPos=0; aPos<iCipherString.length(); aPos++) {
+			unsigned int aOffset=aIntDistribution(aGenerator);
+			for (unsigned int aCounter=0; aCounter<iCipherString.length(); aCounter++) {
+				unsigned int aPos=(aCounter+aOffset)%iCipherString.length();
 				std::string aBestChoiceSoFar(1, apSymbolMap->find(iCipherString[aPos])->second);
 
 				for (std::unordered_map<std::string, unsigned long long>::const_iterator aTestNGram=apTestMap->begin(); aTestNGram!=apTestMap->end(); ++aTestNGram) {
