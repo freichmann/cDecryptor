@@ -40,7 +40,7 @@ long double score(const std::string *ipCandidate, const std::unordered_map<unsig
 		unsigned int aLength=aNorm->second->_length;
 
 		for (unsigned int i=0; i+aLength<=ipCandidate->length(); i++) {
-			std::string aSub=ipCandidate->substr(i, aLength);
+			std::string aSub=ipCandidate->substr(i , aLength);
 			std::unordered_map<std::string, unsigned long long>::iterator b=aObserved->find(aSub);
 			if (b!=aObserved->end())
 				b->second++;
@@ -114,14 +114,14 @@ void readNorms(std::list<std::string> afiles, std::unordered_map<unsigned long l
 }
 
 void randomizeMap(std::unordered_map<char, char> *ipUniqueSymbols, const long double &iRandom) {
-	std::default_random_engine generator;
-	generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+	std::default_random_engine aGenerator;
+	aGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
 	std::uniform_int_distribution<unsigned int> aCharDistribution((unsigned int)'a', (unsigned int)'z');
 	std::uniform_real_distribution<long double> aDoubleDistribution(0,1);
 
 	for (std::unordered_map<char, char>::iterator i=ipUniqueSymbols->begin(); i!=ipUniqueSymbols->end(); ++i)
-		if (aDoubleDistribution(generator)<iRandom)
-			i->second=(char)(aCharDistribution(generator));
+		if (aDoubleDistribution(aGenerator)<iRandom)
+			i->second=(char)(aCharDistribution(aGenerator));
 }
 
 void initMap(const std::string& iCipher, std::unordered_map<char, char> *ipUniqueSymbols) {
@@ -212,21 +212,15 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 	std::string* apClear=new std::string();
 
 	while (true) {
-		bool aFoundCandidate;
 		long double aLoopBestScore=*ipWorstScore;
-
+		bool aLoopImproved;
 		do {
-			aFoundCandidate=false;
-			std::string aCandidate;
-			buildClear(iCipherString, apSymbolMap, &aCandidate);
-			std::string aLoopBestSubstitute;
-			unsigned int aLoopBestPosition;
+			aLoopImproved=false;
 
-			std::unordered_map<unsigned long long, NGram*>::const_iterator aTester=ipNorms->find(1);
-			std::unordered_map<std::string, unsigned long long>* apTestMap=aTester->second->_NGramMap;
-			unsigned int aLength=aTester->second->_length;
-			for (unsigned int aPos=0; aPos+aLength<iCipherString.length(); aPos++) {
-				const std::string aPrevious=aCandidate.substr(aPos, aLength);
+			std::unordered_map<std::string, unsigned long long>* apTestMap=ipNorms->find(1)->second->_NGramMap;
+			for (unsigned int aPos=0; aPos<iCipherString.length(); aPos++) {
+				buildClear(iCipherString, apSymbolMap, apClear);
+				std::string aBestChoiceSoFar=apClear->substr(aPos,1);
 				for (std::unordered_map<std::string, unsigned long long>::const_iterator aTestNGram=apTestMap->begin(); aTestNGram!=apTestMap->end(); ++aTestNGram) {
 					insertSymbols(iCipherString, apSymbolMap, &aTestNGram->first, aPos);
 					buildClear(iCipherString, apSymbolMap, apClear);
@@ -234,26 +228,25 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 
 					if (aCurrentScore>aLoopBestScore) {
 						aLoopBestScore=aCurrentScore;
-						aLoopBestSubstitute=aTestNGram->first;
-						aLoopBestPosition=aPos;
-						aFoundCandidate=true;
+						aBestChoiceSoFar=aTestNGram->first;
+						aLoopImproved=true;
 					}
 				}
-				insertSymbols(iCipherString, apSymbolMap, &aPrevious, aPos);
+				insertSymbols(iCipherString, apSymbolMap, &aBestChoiceSoFar, aPos);
 			}
 
-			if (aFoundCandidate) {
-				insertSymbols(iCipherString, apSymbolMap, &aLoopBestSubstitute, aLoopBestPosition);
+			if (aLoopImproved) {
 				buildClear(iCipherString, apSymbolMap, apClear);
+				long double aCurrentScore=score(apClear, ipNorms, iLog);
 
-				if (checkBest(aLoopBestScore, apClear, ipMutex, ipBestScore, ipBestSolution)) {
+				if (checkBest(aCurrentScore, apClear, ipMutex, ipBestScore, ipBestSolution)) {
 					std::cout << timeString() << " Thread " << iThread << " " << aLoopBestScore << " ";
 					if (iLog != NULL)
 						std::cout << iLog->str();
 					std::cout << *apClear << std::endl;
 				}
 			}
-		} while (aFoundCandidate);
+		} while (aLoopImproved);
 
 		if (iRandom>0) {
 			ipMutex->lock();
