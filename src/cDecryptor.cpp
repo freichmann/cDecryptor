@@ -211,6 +211,12 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 	std::default_random_engine aGenerator;
 	aGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
 	std::uniform_int_distribution<unsigned int> aIntDistribution(0, iCipherString.length());
+	std::uniform_real_distribution<long double> aDoubleDistribution(0,1);
+
+	long double aTolInit=0.02;
+	long double aTolFac=0.95;
+	long double aMaxTol=0.005;
+	long double aCurTol=aTolInit;
 
 	initMap(iCipherString, apSymbolMap);
 
@@ -222,7 +228,10 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 
 	while (true) {
 		long double aLoopBestScore=*ipWorstScore;
+		long double aLastScore=*ipWorstScore;
 		bool aLoopImproved;
+		unsigned long long aTolerated=0;
+
 		do {
 			aLoopImproved=false;
 
@@ -237,30 +246,36 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 					buildClear(iCipherString, apSymbolMap, apClear);
 					long double aCurrentScore=score(apClear, ipNorms, iLog);
 
-					if (aCurrentScore>aLoopBestScore) {
-						aLoopBestScore=aCurrentScore;
+					long double aTol=aCurTol*aDoubleDistribution(aGenerator);
+
+					if (aCurrentScore*(1-aTol)>aLastScore) {
+						aLastScore=aCurrentScore;
 						aBestChoiceSoFar=aTestNGram->first;
-						aLoopImproved=true;
+						if (aCurrentScore>aLoopBestScore) {
+							aLoopBestScore=aCurrentScore;
+							if (checkBest(aCurrentScore, apClear, ipMutex, ipBestScore, ipBestSolution)) {
+								aLoopImproved=true;
+								std::cout << timeString() << " Thread:" << iThread << " Score:" << aLoopBestScore << " ";
+								if (iLog != NULL)
+									std::cout << "NGrams:" << iLog->str() << "Tolerance:" << aCurTol << " ";
+								std::cout << *apClear << std::endl;
+							}
+						} else
+							aTolerated++;
 					}
 				}
 				insertSymbols(iCipherString, apSymbolMap, &aBestChoiceSoFar, aPos);
 			}
-
-			if (aLoopImproved) {
-				buildClear(iCipherString, apSymbolMap, apClear);
-				long double aVerifiedScore=score(apClear, ipNorms, iLog);
-
-				if (aVerifiedScore!=aLoopBestScore)
-					std::cerr << "Drifting!" << std::endl;
-
-				if (checkBest(aVerifiedScore, apClear, ipMutex, ipBestScore, ipBestSolution)) {
-					std::cout << timeString() << " Thread " << iThread << " " << aLoopBestScore << " ";
-					if (iLog != NULL)
-						std::cout << iLog->str();
-					std::cout << *apClear << std::endl;
-				}
-			}
 		} while (aLoopImproved);
+
+		std::cout << timeString() << " DEBUG Thread:" << iThread
+				<< " Give up, tolerated " << aTolerated
+				<< " at Score:" << score(apClear, ipNorms, iLog)
+				<< " Tolerance:" << aCurTol << " "
+				<< *apClear << std::endl;
+		aCurTol*=aTolFac;
+		if (aCurTol<aMaxTol)
+			aCurTol=aTolInit;
 
 		if (iRandom>0) {
 			ipMutex->lock();
@@ -271,6 +286,10 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 			initMap(iCipherString, apSymbolMap);
 
 		buildClear(iCipherString, apSymbolMap, apClear);
+		std::cout << timeString() << " DEBUG Thread:" << iThread
+				<< " Reset with Score:" << score(apClear, ipNorms, iLog)
+				<< " with Tolerance:" << aCurTol << " "
+				<< *apClear << std::endl;
 	}
 
 	delete iLog;
