@@ -246,11 +246,17 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 	std::ostringstream *iLog=new std::ostringstream();
 	std::string* apClear=new std::string();
 
+	long double aLoopBestScore;
+	std::string aLoopBestSolution;
+
 	while (true) {
-		long double aLoopBestScore=*ipWorstScore;
-		std::string aLoopBestSolution;
 		long double aLastScore=*ipWorstScore;
 		bool aLoopImproved;
+
+		buildClear(iCipherString, apSymbolMap, apClear);
+		aLoopBestScore=score(apClear, ipNorms, iLog);
+
+		logTime("DEBUG Thread:", iThread, "Restart", "Score:", aLoopBestScore, *apClear);
 
 		do {
 			aLoopImproved=false;
@@ -287,6 +293,10 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 			}
 		} while (aLoopImproved);
 
+		buildClear(iCipherString, apSymbolMap, apClear);
+		aLoopBestScore=score(apClear, ipNorms, iLog);
+		logTime("DEBUG Thread:", iThread, "Give Up", "Score:", aLoopBestScore, *apClear);
+
 		aFails++;
 
 		aCurTol*=aTolFac;
@@ -303,9 +313,6 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 			aCurTol=aTolInit;
 			aFails=0;
 		}
-
-		buildClear(iCipherString, apSymbolMap, apClear);
-		logTime("DEBUG Thread:", iThread, "New Init", *apClear);
 	}
 
 	delete iLog;
