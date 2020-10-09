@@ -233,10 +233,7 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 	std::uniform_real_distribution<long double> aDoubleDistribution(0,1);
 
 	unsigned long long aFails=0;
-	long double aTolInit=0.02;
-	long double aTolFac=0.95;
-	long double aMaxTol=0.005;
-	long double aCurTol=aTolInit;
+	long double aCurTol=0.02;
 
 	initMap(iCipherString, apSymbolMap);
 
@@ -256,10 +253,11 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 		buildClear(iCipherString, apSymbolMap, apClear);
 		aLoopBestScore=score(apClear, ipNorms, iLog);
 
-		logTime("DEBUG Thread:", iThread, "Restart", "Score:", aLoopBestScore, *apClear);
+		logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurTol, "Score:", aLoopBestScore, *apClear);
 
 		do {
 			aLoopImproved=false;
+			unsigned int aTolerated=0;
 
 			std::unordered_map<std::string, unsigned long long>* apTestMap=ipNorms->find(1)->second->_NGramMap;
 			unsigned int aOffset=aIntDistribution(aGenerator);
@@ -286,22 +284,27 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 
 							if (checkBest(aCurrentScore, apClear))
 								logTime("Thread:", iThread, "Score:", aLoopBestScore, iLog->str(), aCurTol, *apClear);
-						}
+						} else
+							aTolerated++;
 					}
 				}
 				insertSymbols(iCipherString, apSymbolMap, &aBestChoiceSoFar, aPos);
+			}
+
+			if (aTolerated>iCipherString.length())
+				aCurTol*=0.9;
+			else {
+				aCurTol*=1.1;
+				if (aCurTol>1)
+					aCurTol=1;
 			}
 		} while (aLoopImproved);
 
 		buildClear(iCipherString, apSymbolMap, apClear);
 		aLoopBestScore=score(apClear, ipNorms, iLog);
-		logTime("DEBUG Thread:", iThread, "Give Up", "Score:", aLoopBestScore, *apClear);
+		logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurTol, "Score:", aLoopBestScore, *apClear);
 
 		aFails++;
-
-		aCurTol*=aTolFac;
-		if (aCurTol<aMaxTol)
-			aCurTol=aTolInit;
 
 		if (aFails<iMaxIter && iRandom>0) {
 			aBestScoreMux.lock();
@@ -310,7 +313,6 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 			randomizeMap(apSymbolMap, iRandom);
 		} else {
 			initMap(iCipherString, apSymbolMap);
-			aCurTol=aTolInit;
 			aFails=0;
 		}
 	}
