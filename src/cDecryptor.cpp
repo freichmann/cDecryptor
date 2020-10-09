@@ -16,6 +16,12 @@
 
 #include "NGram.h"
 
+//Globals
+std::mutex aBestScoreMux;
+std::mutex aOutputMux;
+long double aGlobalBestScore;
+std::string aGlobalBestSolution;
+
 long double logFac(unsigned long long iK) {
 	long double aLogFac=0;
 	for (unsigned long long i=2; i<=iK; i++)
@@ -65,7 +71,7 @@ long double score(const std::string *ipCandidate, const std::unordered_map<unsig
 			aScore+=aLnGaussScore;
 			if (iLog!=NULL)
 				(*iLog) << aLength << ":" << aLnGaussScore << " ";
-		} else // at initialization
+		} else
 			aScore+=aLoopScore;
 
 		aObserved->clear();
@@ -155,21 +161,15 @@ void insertSymbols(const std::string& iCipherString, std::unordered_map<char, ch
 		ipSymbolMap->find(iCipherString[iPos+i])->second=ipLetters->at(i);
 }
 
-std::_Put_time<char> timeString() {
-	time_t now_c = std::chrono::system_clock::to_time_t(
-			std::chrono::system_clock::now());
-	return std::put_time(std::localtime(&now_c), "%c");
-}
-
-bool checkBest(long double aLoopBestScore, const std::string *ipClear, std::mutex* ipMutex, long double *ipBestScore, std::string *ipBestSolution) {
-	ipMutex->lock();
-	if (aLoopBestScore > *ipBestScore) {
-		*ipBestScore = aLoopBestScore;
-		*ipBestSolution = std::string(*ipClear);
-		ipMutex->unlock();
+bool checkBest(long double aLoopBestScore, const std::string *ipClear) {
+	aBestScoreMux.lock();
+	if (aLoopBestScore > aGlobalBestScore) {
+		aGlobalBestScore = aLoopBestScore;
+		aGlobalBestSolution = std::string(*ipClear);
+		aBestScoreMux.unlock();
 		return true;
 	}
-	ipMutex->unlock();
+	aBestScoreMux.unlock();
 	return false;
 }
 
@@ -205,7 +205,26 @@ void computeScoreStatistics(const std::string& iTextFile, std::unordered_map<uns
 	delete apString;
 }
 
-void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, std::mutex *ipMutex, long double *ipBestScore, std::string *ipBestSolution, const long double *ipWorstScore, const std::string &iSeed, const long double iRandom) {
+void log() {
+	std::cout << std::endl;
+};
+
+template<typename T, typename ... Args>
+void log(T first, Args ... args) {
+	std::cout << first << " ";
+	log(args ...);
+}
+
+template<typename ... Args>
+void logTime(Args ... args) {
+	time_t now_c = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+	aOutputMux.lock();
+	std::cout << std::put_time(std::localtime(&now_c), "%c") << " ";
+	log(args ...);
+	aOutputMux.unlock();
+}
+
+void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, const long double *ipWorstScore, const std::string &iSeed, const long double iRandom, const long double iMaxIter) {
 	std::unordered_map<char, char> *apSymbolMap=new std::unordered_map<char, char>();
 
 	std::default_random_engine aGenerator;
@@ -213,6 +232,7 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 	std::uniform_int_distribution<unsigned int> aIntDistribution(0, iCipherString.length());
 	std::uniform_real_distribution<long double> aDoubleDistribution(0,1);
 
+	unsigned long long aFails=0;
 	long double aTolInit=0.02;
 	long double aTolFac=0.95;
 	long double aMaxTol=0.005;
@@ -228,9 +248,9 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 
 	while (true) {
 		long double aLoopBestScore=*ipWorstScore;
+		std::string aLoopBestSolution;
 		long double aLastScore=*ipWorstScore;
 		bool aLoopImproved;
-		unsigned long long aTolerated=0;
 
 		do {
 			aLoopImproved=false;
@@ -251,45 +271,41 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 					if (aCurrentScore*(1-aTol)>aLastScore) {
 						aLastScore=aCurrentScore;
 						aBestChoiceSoFar=aTestNGram->first;
+
 						if (aCurrentScore>aLoopBestScore) {
 							aLoopBestScore=aCurrentScore;
-							if (checkBest(aCurrentScore, apClear, ipMutex, ipBestScore, ipBestSolution)) {
-								aLoopImproved=true;
-								std::cout << timeString() << " Thread:" << iThread << " Score:" << aLoopBestScore << " ";
-								if (iLog != NULL)
-									std::cout << "NGrams:" << iLog->str() << "Tolerance:" << aCurTol << " ";
-								std::cout << *apClear << std::endl;
-							}
-						} else
-							aTolerated++;
+							aLoopBestSolution=*apClear;
+							aLoopImproved=true;
+							aFails=0;
+
+							if (checkBest(aCurrentScore, apClear))
+								logTime("Thread:", iThread, "Score:", aLoopBestScore, iLog->str(), aCurTol, *apClear);
+						}
 					}
 				}
 				insertSymbols(iCipherString, apSymbolMap, &aBestChoiceSoFar, aPos);
 			}
 		} while (aLoopImproved);
 
-		std::cout << timeString() << " DEBUG Thread:" << iThread
-				<< " Give up, tolerated " << aTolerated
-				<< " at Score:" << score(apClear, ipNorms, iLog)
-				<< " Tolerance:" << aCurTol << " "
-				<< *apClear << std::endl;
+		aFails++;
+
 		aCurTol*=aTolFac;
 		if (aCurTol<aMaxTol)
 			aCurTol=aTolInit;
 
-		if (iRandom>0) {
-			ipMutex->lock();
-			insertSymbols(iCipherString, apSymbolMap, ipBestSolution, 0);
-			ipMutex->unlock();
+		if (aFails<iMaxIter && iRandom>0) {
+			aBestScoreMux.lock();
+			insertSymbols(iCipherString, apSymbolMap, &aLoopBestSolution, 0);
+			aBestScoreMux.unlock();
 			randomizeMap(apSymbolMap, iRandom);
-		} else
+		} else {
 			initMap(iCipherString, apSymbolMap);
+			aCurTol=aTolInit;
+			aFails=0;
+		}
 
 		buildClear(iCipherString, apSymbolMap, apClear);
-		std::cout << timeString() << " DEBUG Thread:" << iThread
-				<< " Reset with Score:" << score(apClear, ipNorms, iLog)
-				<< " with Tolerance:" << aCurTol << " "
-				<< *apClear << std::endl;
+		logTime("DEBUG Thread:", iThread, "New Init", *apClear);
 	}
 
 	delete iLog;
@@ -302,12 +318,13 @@ int main( int argc, char* argv[] ) {
 	std::string aCipherFile;
 	std::string aTextFile;
 	std::string aSeed="";
+	unsigned int aMaxIter=0;
 	unsigned int aThreadsCount=1;
 	long double aRandom=0.0;
 
 	{
 		int c;
-		while( ( c = getopt(argc, argv, "l:c:t:s:w:r:") ) != -1 ) {
+		while( ( c = getopt(argc, argv, "l:c:t:s:w:r:x:") ) != -1 ) {
 			switch(c) {
 			case 'l':
 				if(optarg)
@@ -333,6 +350,10 @@ int main( int argc, char* argv[] ) {
 				if(optarg)
 					aRandom=std::stold(optarg);
 				break;
+			case 'x':
+				if(optarg)
+					aMaxIter=atoi(optarg);
+				break;
 			}
 		}
 	}
@@ -344,6 +365,7 @@ int main( int argc, char* argv[] ) {
 	std::cout << *apCipherString << std::endl;
 
 	std::cout << "Randomize fraction: " << aRandom << std::endl;
+	std::cout << "Random re-initialization after " << aMaxIter << " iterations" << std::endl;
 
 	std::unordered_map<unsigned long long, NGram*> *apNorms=new std::unordered_map<unsigned long long, NGram*>();
 	readNorms(aNGramsFiles, apNorms);
@@ -360,8 +382,6 @@ int main( int argc, char* argv[] ) {
 		std::cout << "Maximum reachable score " << aLnPerfect << std::endl;
 	}
 
-	std::mutex *apMutex=new std::mutex();
-
 	if (aSeed.length()>0) {
 		std::ostringstream *iLog=new std::ostringstream();
 		const long double aSeedScore=score(&aSeed, apNorms, iLog);
@@ -371,24 +391,20 @@ int main( int argc, char* argv[] ) {
 
 	std::string *apString=new std::string(apCipherString->length(), '.');
 	const long double *apWorstScore=new long double(score(apString, apNorms, NULL));
+	aGlobalBestScore=*apWorstScore;
 	delete apString;
-	long double *apBestScore=new long double(*apWorstScore);
-	std::string *apBestSolution=new std::string();
 
 	std::vector<std::thread> aThreads[aThreadsCount];
 	for (unsigned long long aThread=0; aThread<aThreadsCount; aThread++)
-		aThreads->push_back(std::thread(&hillclimber, aThread, apNorms, *apCipherString, apMutex, apBestScore, apBestSolution, apWorstScore, aSeed, aRandom));
+		aThreads->push_back(std::thread(&hillclimber, aThread, apNorms, *apCipherString, apWorstScore, aSeed, aRandom, aMaxIter));
 
-	std::cout << timeString() << " " << aThreadsCount << " threads started." << std::endl;
+	logTime(aThreadsCount, "threads started.");
 
 	for (std::vector<std::thread>::iterator i=aThreads->begin(); i!=aThreads->end(); ++i)
 		(*i).join();
 
-	delete apMutex;
 	delete apNorms;
 	delete apCipherString;
-	delete apBestScore;
-	delete apBestSolution;
 	delete apWorstScore;
 
 	return EXIT_SUCCESS;
