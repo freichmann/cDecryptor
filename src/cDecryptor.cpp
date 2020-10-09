@@ -224,7 +224,7 @@ void logTime(Args ... args) {
 	aOutputMux.unlock();
 }
 
-void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, const long double *ipWorstScore, const std::string &iSeed, const long double iRandom, const long double iMaxIter) {
+void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, const long double *ipWorstScore, const std::string &iSeed, const long double iRandom, const long double iMaxIter, const long double aTolFac) {
 	std::unordered_map<char, char> *apSymbolMap=new std::unordered_map<char, char>();
 
 	std::default_random_engine aGenerator;
@@ -268,8 +268,8 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 				for (std::unordered_map<std::string, unsigned long long>::const_iterator aTestNGram=apTestMap->begin(); aTestNGram!=apTestMap->end(); ++aTestNGram) {
 					insertSymbols(iCipherString, apSymbolMap, &aTestNGram->first, aPos);
 					buildClear(iCipherString, apSymbolMap, apClear);
-					long double aCurrentScore=score(apClear, ipNorms, iLog);
 
+					long double aCurrentScore=score(apClear, ipNorms, iLog);
 					long double aTol=aCurTol*aDoubleDistribution(aGenerator);
 
 					if (aCurrentScore*(1-aTol)>aLastScore) {
@@ -291,10 +291,10 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 				insertSymbols(iCipherString, apSymbolMap, &aBestChoiceSoFar, aPos);
 			}
 
-			if (aTolerated>iCipherString.length())
-				aCurTol*=0.9;
+			if (aTolerated>aTolFac*iCipherString.length())
+				aCurTol*=0.95;
 			else {
-				aCurTol*=1.1;
+				aCurTol*=1.05;
 				if (aCurTol>1)
 					aCurTol=1;
 			}
@@ -327,25 +327,30 @@ int main( int argc, char* argv[] ) {
 	std::string aCipherFile;
 	std::string aTextFile;
 	std::string aSeed="";
-	unsigned int aMaxIter=0;
+	unsigned int aMaxIter=250;
 	unsigned int aThreadsCount=1;
 	long double aRandom=0.0;
+	long double aTolFac=1.1;
 
 	{
 		int c;
-		while( ( c = getopt(argc, argv, "l:c:t:s:w:r:x:") ) != -1 ) {
+		while( ( c = getopt(argc, argv, "l:c:t:f:s:w:r:x:") ) != -1 ) {
 			switch(c) {
-			case 'l':
-				if(optarg)
-					aNGramsFiles.push_back(optarg);
-				break;
 			case 'c':
 				if(optarg)
 					aCipherFile=optarg;
 				break;
-			case 'w':
+			case 'f':
 				if(optarg)
-					aTextFile=optarg;
+					aTolFac=std::stold(optarg);
+				break;
+			case 'l':
+				if(optarg)
+					aNGramsFiles.push_back(optarg);
+				break;
+			case 'r':
+				if(optarg)
+					aRandom=std::stold(optarg);
 				break;
 			case 's':
 				if(optarg)
@@ -355,9 +360,9 @@ int main( int argc, char* argv[] ) {
 				if(optarg)
 					aThreadsCount=atoi(optarg);
 				break;
-			case 'r':
+			case 'w':
 				if(optarg)
-					aRandom=std::stold(optarg);
+					aTextFile=optarg;
 				break;
 			case 'x':
 				if(optarg)
@@ -375,6 +380,7 @@ int main( int argc, char* argv[] ) {
 
 	std::cout << "Randomize fraction: " << aRandom << std::endl;
 	std::cout << "Random re-initialization after " << aMaxIter << " iterations" << std::endl;
+	std::cout << "Tolerance factor: " << aTolFac << std::endl;
 
 	std::unordered_map<unsigned long long, NGram*> *apNorms=new std::unordered_map<unsigned long long, NGram*>();
 	readNorms(aNGramsFiles, apNorms);
@@ -405,7 +411,7 @@ int main( int argc, char* argv[] ) {
 
 	std::vector<std::thread> aThreads[aThreadsCount];
 	for (unsigned long long aThread=0; aThread<aThreadsCount; aThread++)
-		aThreads->push_back(std::thread(&hillclimber, aThread, apNorms, *apCipherString, apWorstScore, aSeed, aRandom, aMaxIter));
+		aThreads->push_back(std::thread(&hillclimber, aThread, apNorms, *apCipherString, apWorstScore, aSeed, aRandom, aMaxIter, aTolFac));
 
 	logTime(aThreadsCount, "threads started.");
 
