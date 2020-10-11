@@ -222,7 +222,7 @@ void logTime(Args ... args) {
 	log(args ...);
 }
 
-void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, const long double *ipWorstScore, const std::string &iSeed, const long double iRandom, const long double iMaxIter, const long double aTolFac) {
+void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, const std::string &iSeed, const long double iRandom, const long double iMaxIter, const long double aTolFac) {
 	std::unordered_map<char, char> *apSymbolMap=new std::unordered_map<char, char>();
 
 	std::default_random_engine aGenerator;
@@ -241,15 +241,17 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 	std::ostringstream *iLog=new std::ostringstream();
 	std::string* apClear=new std::string();
 
-	long double aLoopBestScore;
 	std::string aLoopBestSolution;
 
 	while (true) {
-		long double aLastScore=*ipWorstScore;
 		bool aLoopImproved;
 
 		buildClear(iCipherString, apSymbolMap, apClear);
-		aLoopBestScore=score(apClear, ipNorms, iLog);
+		long double aLoopBestScore=score(apClear, ipNorms, iLog);
+		long double aLastScore=aLoopBestScore;
+
+		if (checkBest(aLoopBestScore, apClear))
+			logTime("Thread:", iThread, "Score:", aLoopBestScore, iLog->str(), aCurTol, *apClear);
 
 		logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurTol, "Score:", aLoopBestScore, *apClear);
 
@@ -410,7 +412,7 @@ int main( int argc, char* argv[] ) {
 
 	std::vector<std::thread> aThreads[aThreadsCount];
 	for (unsigned long long aThread=0; aThread<aThreadsCount; aThread++)
-		aThreads->push_back(std::thread(&hillclimber, aThread, apNorms, *apCipherString, apWorstScore, aSeed, aRandom, aMaxIter, aTolFac));
+		aThreads->push_back(std::thread(&hillclimber, aThread, apNorms, *apCipherString, aSeed, aRandom, aMaxIter, aTolFac));
 
 	logTime(aThreadsCount, "threads started.");
 
