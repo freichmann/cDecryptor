@@ -15,10 +15,11 @@
 #include <tgmath.h>
 
 #include "NGram.h"
+#include "Lock.h"
 
 //Globals
-std::mutex aBestScoreMux;
-std::mutex aOutputMux;
+std::mutex aBestScoreMutex;
+std::mutex aOutputMutex;
 long double aGlobalBestScore;
 std::string aGlobalBestSolution;
 
@@ -46,7 +47,7 @@ long double score(const std::string *ipCandidate, const std::unordered_map<unsig
 		unsigned int aLength=aNorm->second->_length;
 
 		for (unsigned int i=0; i+aLength<=ipCandidate->length(); i++) {
-			std::string aSub=ipCandidate->substr(i , aLength);
+			const std::string aSub=ipCandidate->substr(i , aLength);
 			std::unordered_map<std::string, unsigned long long>::iterator b=aObserved->find(aSub);
 			if (b!=aObserved->end())
 				b->second++;
@@ -162,14 +163,12 @@ void insertSymbols(const std::string& iCipherString, std::unordered_map<char, ch
 }
 
 bool checkBest(long double aLoopBestScore, const std::string *ipClear) {
-	aBestScoreMux.lock();
+	Lock aLock(aBestScoreMutex);
 	if (aLoopBestScore > aGlobalBestScore) {
 		aGlobalBestScore = aLoopBestScore;
 		aGlobalBestSolution = std::string(*ipClear);
-		aBestScoreMux.unlock();
 		return true;
 	}
-	aBestScoreMux.unlock();
 	return false;
 }
 
@@ -218,10 +217,9 @@ void log(T first, Args ... args) {
 template<typename ... Args>
 void logTime(Args ... args) {
 	time_t now_c = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-	aOutputMux.lock();
+	Lock aLock(aOutputMutex);
 	std::cout << std::put_time(std::localtime(&now_c), "%c") << " ";
 	log(args ...);
-	aOutputMux.unlock();
 }
 
 void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, const long double *ipWorstScore, const std::string &iSeed, const long double iRandom, const long double iMaxIter, const long double aTolFac) {
@@ -307,9 +305,10 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 		aFails++;
 
 		if (aFails<iMaxIter && iRandom>0) {
-			aBestScoreMux.lock();
-			insertSymbols(iCipherString, apSymbolMap, &aLoopBestSolution, 0);
-			aBestScoreMux.unlock();
+			{
+				Lock aLock(aBestScoreMutex);
+				insertSymbols(iCipherString, apSymbolMap, &aLoopBestSolution, 0);
+			}
 			randomizeMap(apSymbolMap, iRandom);
 		} else {
 			initMap(iCipherString, apSymbolMap);
