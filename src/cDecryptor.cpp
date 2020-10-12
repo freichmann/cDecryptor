@@ -22,6 +22,7 @@ std::mutex aBestScoreMutex;
 std::mutex aOutputMutex;
 long double aGlobalBestScore;
 std::string aGlobalBestSolution;
+bool aVerbose=false;
 
 long double logFac(unsigned long long iK) {
 	long double aLogFac=0;
@@ -42,12 +43,12 @@ long double score(const std::string *ipCandidate, const std::unordered_map<unsig
 
 	std::unordered_map<std::string, unsigned long long> *aObserved=new std::unordered_map<std::string, unsigned long long>();
 
-	for (std::unordered_map<unsigned long long, NGram*>::const_iterator aNorm=ipNorms->begin(); aNorm!=ipNorms->end(); ++aNorm) {
+	for (std::unordered_map<unsigned long long, NGram*>::const_iterator aNorm=ipNorms->cbegin(); aNorm!=ipNorms->cend(); ++aNorm) {
 		long double aLoopScore=0;
-		unsigned int aLength=aNorm->second->_length;
+		const unsigned int aLength=aNorm->second->_length;
 
 		for (unsigned int i=0; i+aLength<=ipCandidate->length(); i++) {
-			const std::string aSub=ipCandidate->substr(i , aLength);
+			const std::string aSub=ipCandidate->substr(i, aLength);
 			std::unordered_map<std::string, unsigned long long>::iterator b=aObserved->find(aSub);
 			if (b!=aObserved->end())
 				b->second++;
@@ -56,9 +57,9 @@ long double score(const std::string *ipCandidate, const std::unordered_map<unsig
 		}
 
 		const long double aNeverSeen=logl(2)/(long double)aNorm->second->_count;
-		for (std::unordered_map<std::string, unsigned long long>::iterator b=aObserved->begin(); b!=aObserved->end(); ++b) {
+		for (std::unordered_map<std::string, unsigned long long>::const_iterator b=aObserved->cbegin(); b!=aObserved->cend(); ++b) {
 			long double aP;
-			std::unordered_map<std::string, unsigned long long>::iterator j=aNorm->second->_NGramMap->find(b->first);
+			std::unordered_map<std::string, unsigned long long>::const_iterator j=aNorm->second->_NGramMap->find(b->first);
 			if (j!=aNorm->second->_NGramMap->end())
 				aP=(long double)j->second/(long double)aNorm->second->_count;
 			else
@@ -68,7 +69,7 @@ long double score(const std::string *ipCandidate, const std::unordered_map<unsig
 		}
 
 		if (aNorm->second->_mean<0) {
-			long double aLnGaussScore=lnGauss(aLoopScore, aNorm->second->_mean, aNorm->second->_sigma);
+			const long double aLnGaussScore=lnGauss(aLoopScore, aNorm->second->_mean, aNorm->second->_sigma);
 			aScore+=aLnGaussScore;
 			if (iLog!=NULL)
 				(*iLog) << aLength << ":" << aLnGaussScore << " ";
@@ -253,7 +254,8 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 		if (checkBest(aLoopBestScore, apClear))
 			logTime("Thread:", iThread, "Score:", aLoopBestScore, iLog->str(), aCurTol, *apClear);
 
-		logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurTol, "Score:", aLoopBestScore, *apClear);
+		if (aVerbose)
+			logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurTol, "Score:", aLoopBestScore, *apClear);
 
 		do {
 			aLoopImproved=false;
@@ -302,7 +304,8 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 
 		buildClear(iCipherString, apSymbolMap, apClear);
 		aLoopBestScore=score(apClear, ipNorms, iLog);
-		logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurTol, "Score:", aLoopBestScore, *apClear);
+		if (aVerbose)
+			logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurTol, "Score:", aLoopBestScore, *apClear);
 
 		aFails++;
 
@@ -335,7 +338,7 @@ int main( int argc, char* argv[] ) {
 
 	{
 		int c;
-		while( ( c = getopt(argc, argv, "l:c:t:f:s:w:r:x:") ) != -1 ) {
+		while( ( c = getopt(argc, argv, "l:c:t:f:s:w:r:x:v") ) != -1 ) {
 			switch(c) {
 			case 'c':
 				if(optarg)
@@ -360,6 +363,10 @@ int main( int argc, char* argv[] ) {
 			case 't':
 				if(optarg)
 					aThreadsCount=atoi(optarg);
+				break;
+			case 'v':
+				if(optarg)
+					aVerbose=true;
 				break;
 			case 'w':
 				if(optarg)
