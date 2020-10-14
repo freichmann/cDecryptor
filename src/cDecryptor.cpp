@@ -37,6 +37,7 @@ long double lnGauss(const long double iX, const long double iMean, const long do
 
 long double score(const std::string *ipCandidate, const std::unordered_map<unsigned long long, NGram*> *ipNorms, std::ostringstream *iLog) {
 	long double aScore=0;
+	bool aFirstLog=true;
 
 	if (iLog!=NULL)
 		iLog->str("");
@@ -71,8 +72,13 @@ long double score(const std::string *ipCandidate, const std::unordered_map<unsig
 		if (aNorm->second->_mean<0) {
 			const long double aLnGaussScore=lnGauss(aLoopScore, aNorm->second->_mean, aNorm->second->_sigma);
 			aScore+=aLnGaussScore;
-			if (iLog!=NULL)
-				(*iLog) << aLength << ":" << aLnGaussScore << " ";
+			if (iLog!=NULL) {
+				if (!aFirstLog) {
+					(*iLog) << " ";
+				} else
+					aFirstLog=false;
+				(*iLog) << aLength << ":" << aLnGaussScore;
+			}
 		} else
 			aScore+=aLoopScore;
 
@@ -223,16 +229,16 @@ void logTime(Args ... args) {
 	log(args ...);
 }
 
-void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, const std::string &iSeed, const long double iRandom, const long double iMaxIter, const long double aTolFac) {
+void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, const std::string &iSeed, const long double iRandom, const long double iMaxIter, const long double iFuzzy) {
 	std::unordered_map<char, char> *apSymbolMap=new std::unordered_map<char, char>();
 
 	std::default_random_engine aGenerator;
 	aGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
 	std::uniform_int_distribution<unsigned int> aIntDistribution(0, iCipherString.length());
-	std::uniform_real_distribution<long double> aDoubleDistribution(0,1);
+	std::uniform_real_distribution<long double> aDoubleDistribution(0, 1.0);
 
 	unsigned long long aFails=0;
-	long double aCurTol=0.02;
+	long double aCurrentTolerance=0.02;
 
 	initMap(iCipherString, apSymbolMap);
 
@@ -242,78 +248,86 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 	std::ostringstream *iLog=new std::ostringstream();
 	std::string* apClear=new std::string();
 
-	std::string aLoopBestSolution;
+	buildClear(iCipherString, apSymbolMap, apClear);
+	long double aClimberBestScore=score(apClear, ipNorms, iLog);
+	std::string aClimberBestSolution=*apClear;
 
 	while (true) {
 		bool aLoopImproved;
 
 		buildClear(iCipherString, apSymbolMap, apClear);
 		long double aLoopBestScore=score(apClear, ipNorms, iLog);
-		long double aLastScore=aLoopBestScore;
 
 		if (checkBest(aLoopBestScore, apClear))
-			logTime("Thread:", iThread, "Score:", aLoopBestScore, iLog->str(), aCurTol, *apClear);
+			logTime("Thread:", iThread, "Score:", aLoopBestScore, iLog->str(), aCurrentTolerance, *apClear);
 
 		if (aVerbose)
-			logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurTol, "Score:", aLoopBestScore, *apClear);
+			logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, *apClear);
 
 		do {
 			aLoopImproved=false;
+			long double aLastScore=aLoopBestScore;
 			unsigned int aTolerated=0;
+			std::unordered_set<char> aCoveredSymbols;
 
 			std::unordered_map<std::string, unsigned long long>* apTestMap=ipNorms->find(1)->second->_NGramMap;
-			unsigned int aOffset=aIntDistribution(aGenerator);
-			for (unsigned int aCounter=0; aCounter<iCipherString.length(); aCounter++) {
-				unsigned int aPos=(aCounter+aOffset)%iCipherString.length();
-				std::string aBestChoiceSoFar(1, apSymbolMap->find(iCipherString[aPos])->second);
+			for (unsigned int aPos=0; aPos<iCipherString.length(); aPos++) {
+				if (aCoveredSymbols.find(iCipherString.at(aPos))==aCoveredSymbols.end()) {
+					aCoveredSymbols.insert(iCipherString.at(aPos));
+					std::string aBestChoiceSoFar(1, apSymbolMap->find(iCipherString[aPos])->second);
 
-				for (std::unordered_map<std::string, unsigned long long>::const_iterator aTestNGram=apTestMap->begin(); aTestNGram!=apTestMap->end(); ++aTestNGram) {
-					insertSymbols(iCipherString, apSymbolMap, &aTestNGram->first, aPos);
-					buildClear(iCipherString, apSymbolMap, apClear);
+					for (std::unordered_map<std::string, unsigned long long>::const_iterator aTestNGram=apTestMap->begin(); aTestNGram!=apTestMap->end(); ++aTestNGram) {
+						insertSymbols(iCipherString, apSymbolMap, &aTestNGram->first, aPos);
+						buildClear(iCipherString, apSymbolMap, apClear);
 
-					long double aCurrentScore=score(apClear, ipNorms, iLog);
-					long double aTol=aCurTol*aDoubleDistribution(aGenerator);
+						long double aCurrentScore=score(apClear, ipNorms, iLog);
+						long double aTolerance=aCurrentTolerance*aDoubleDistribution(aGenerator);
 
-					if (aCurrentScore*(1-aTol)>aLastScore) {
-						aLastScore=aCurrentScore;
-						aBestChoiceSoFar=aTestNGram->first;
+						if (aCurrentScore*(1.0-aTolerance)>aLastScore) {
+							if (aCurrentScore<aLastScore)
+								aTolerated++;
 
-						if (aCurrentScore>aLoopBestScore) {
-							aLoopBestScore=aCurrentScore;
-							aLoopBestSolution=*apClear;
-							aLoopImproved=true;
-							aFails=0;
+							aLastScore=aCurrentScore;
+							aBestChoiceSoFar=aTestNGram->first;
 
-							if (checkBest(aCurrentScore, apClear))
-								logTime("Thread:", iThread, "Score:", aLoopBestScore, iLog->str(), aCurTol, *apClear);
-						} else
-							aTolerated++;
+							if (aCurrentScore>aLoopBestScore) {
+								aLoopBestScore=aCurrentScore;
+								aLoopImproved=true;
+
+								if (aCurrentScore>aClimberBestScore) {
+									aClimberBestScore=aCurrentScore;
+									aClimberBestSolution=*apClear;
+									aFails=0;
+
+									if (checkBest(aCurrentScore, apClear))
+										logTime("Thread:", iThread, "Score:", aLoopBestScore, iLog->str(), "Tolerance:", aCurrentTolerance, *apClear);
+								}
+							}
+						}
 					}
+					insertSymbols(iCipherString, apSymbolMap, &aBestChoiceSoFar, aPos);
 				}
-				insertSymbols(iCipherString, apSymbolMap, &aBestChoiceSoFar, aPos);
 			}
 
-			if (aTolerated>aTolFac*iCipherString.length())
-				aCurTol*=0.95;
+			if (aTolerated>iFuzzy*iCipherString.length())
+				aCurrentTolerance*=0.95;
 			else {
-				aCurTol*=1.05;
-				if (aCurTol>1)
-					aCurTol=1;
+				aCurrentTolerance*=1.05;
+				if (aCurrentTolerance>1)
+					aCurrentTolerance=1;
 			}
 		} while (aLoopImproved);
 
-		buildClear(iCipherString, apSymbolMap, apClear);
-		aLoopBestScore=score(apClear, ipNorms, iLog);
-		if (aVerbose)
-			logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurTol, "Score:", aLoopBestScore, *apClear);
+		if (aVerbose) {
+			buildClear(iCipherString, apSymbolMap, apClear);
+			aLoopBestScore=score(apClear, ipNorms, iLog);
 
+			logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, *apClear);
+		}
 		aFails++;
 
 		if (aFails<iMaxIter && iRandom>0) {
-			{
-				Lock aLock(aBestScoreMutex);
-				insertSymbols(iCipherString, apSymbolMap, &aLoopBestSolution, 0);
-			}
+			insertSymbols(iCipherString, apSymbolMap, &aClimberBestSolution, 0);
 			randomizeMap(apSymbolMap, iRandom);
 		} else {
 			initMap(iCipherString, apSymbolMap);
@@ -334,7 +348,9 @@ int main( int argc, char* argv[] ) {
 	unsigned int aMaxIter=250;
 	unsigned int aThreadsCount=1;
 	long double aRandom=0.0;
-	long double aTolFac=1.1;
+	long double aFuzzy=0.05;
+
+	std::cout << "cDecryptor Version 14.10.2020 17:36" << std::endl;
 
 	{
 		int c;
@@ -346,7 +362,7 @@ int main( int argc, char* argv[] ) {
 				break;
 			case 'f':
 				if(optarg)
-					aTolFac=std::stold(optarg);
+					aFuzzy=std::stold(optarg);
 				break;
 			case 'l':
 				if(optarg)
@@ -365,8 +381,7 @@ int main( int argc, char* argv[] ) {
 					aThreadsCount=atoi(optarg);
 				break;
 			case 'v':
-				if(optarg)
-					aVerbose=true;
+				aVerbose=true;
 				break;
 			case 'w':
 				if(optarg)
@@ -388,7 +403,8 @@ int main( int argc, char* argv[] ) {
 
 	std::cout << "Randomize fraction: " << aRandom << std::endl;
 	std::cout << "Random re-initialization after " << aMaxIter << " iterations" << std::endl;
-	std::cout << "Tolerance factor: " << aTolFac << std::endl;
+	std::cout << "Tolerance factor: " << aFuzzy << std::endl;
+	std::cout << "Parallel threads: " << aThreadsCount << std::endl;
 
 	std::unordered_map<unsigned long long, NGram*> *apNorms=new std::unordered_map<unsigned long long, NGram*>();
 	readNorms(aNGramsFiles, apNorms);
@@ -399,7 +415,7 @@ int main( int argc, char* argv[] ) {
 		long double aLnPerfect=0.0;
 		for (std::unordered_map<unsigned long long, NGram*>::iterator i=apNorms->begin(); i!=apNorms->end(); ++i) {
 			long double aLnNGramPerfect=-logl(sqrtl(2.0*M_PI) * i->second->_sigma);
-			std::cout << std::setprecision(6) << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << " Mean:" << i->second->_mean << " StdDev:" << i->second->_sigma << " Perfect: " << aLnNGramPerfect << std::endl;
+			std::cout << setiosflags(std::ios::fixed) << std::setprecision(6) << "NGram length:" << i->second->_length << " NGrams:" << i->second->_NGramMap->size() << " Samples:" << i->second->_count << " Mean:" << i->second->_mean << " StdDev:" << i->second->_sigma << " Perfect: " << aLnNGramPerfect << std::endl;
 			aLnPerfect += aLnNGramPerfect;
 		}
 		std::cout << "Maximum reachable score " << aLnPerfect << std::endl;
@@ -419,7 +435,7 @@ int main( int argc, char* argv[] ) {
 
 	std::vector<std::thread> aThreads[aThreadsCount];
 	for (unsigned long long aThread=0; aThread<aThreadsCount; aThread++)
-		aThreads->push_back(std::thread(&hillclimber, aThread, apNorms, *apCipherString, aSeed, aRandom, aMaxIter, aTolFac));
+		aThreads->push_back(std::thread(&hillclimber, aThread, apNorms, *apCipherString, aSeed, aRandom, aMaxIter, aFuzzy));
 
 	logTime(aThreadsCount, "threads started.");
 
