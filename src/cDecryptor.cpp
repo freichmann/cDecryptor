@@ -230,6 +230,7 @@ void logTime(Args ... args) {
 }
 
 void hillclimber(const unsigned long long iThread, const std::unordered_map<unsigned long long, NGram*> *ipNorms, const std::string& iCipherString, const std::string &iSeed, const long double iRandom, const long double iMaxIter, const long double iFuzzy) {
+
 	std::unordered_map<char, char> *apSymbolMap=new std::unordered_map<char, char>();
 
 	std::default_random_engine aGenerator;
@@ -268,16 +269,14 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 			aLoopImproved=false;
 			long double aLastScore=aLoopBestScore;
 			unsigned int aTolerated=0;
-			std::unordered_set<char> aCoveredSymbols;
 
-			std::unordered_map<std::string, unsigned long long>* apTestMap=ipNorms->find(1)->second->_NGramMap;
-			for (unsigned int aPos=0; aPos<iCipherString.length(); aPos++) {
-				if (aCoveredSymbols.find(iCipherString.at(aPos))==aCoveredSymbols.end()) {
-					aCoveredSymbols.insert(iCipherString.at(aPos));
-					std::string aBestChoiceSoFar(1, apSymbolMap->find(iCipherString[aPos])->second);
-
-					for (std::unordered_map<std::string, unsigned long long>::const_iterator aTestNGram=apTestMap->begin(); aTestNGram!=apTestMap->end(); ++aTestNGram) {
-						insertSymbols(iCipherString, apSymbolMap, &aTestNGram->first, aPos);
+			std::unordered_map<std::string, unsigned long long>* apAlphabet=ipNorms->find(1)->second->_NGramMap;
+			for (std::unordered_map<char, char>::iterator aMappedSymbol=apSymbolMap->begin(); aMappedSymbol!=apSymbolMap->end(); ++aMappedSymbol) {
+				const char aBefore=aMappedSymbol->second;
+				char aBestChoiceSoFar=aBefore;
+				for (std::unordered_map<std::string, unsigned long long>::const_iterator aMappedLetter=apAlphabet->begin(); aMappedLetter!=apAlphabet->end(); ++aMappedLetter) {
+					if (aMappedLetter->first.at(0)!=aBefore) {
+						aMappedSymbol->second=aMappedLetter->first.at(0);
 						buildClear(iCipherString, apSymbolMap, apClear);
 
 						long double aCurrentScore=score(apClear, ipNorms, iLog);
@@ -288,7 +287,7 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 								aTolerated++;
 
 							aLastScore=aCurrentScore;
-							aBestChoiceSoFar=aTestNGram->first;
+							aBestChoiceSoFar=aMappedLetter->first.at(0);
 
 							if (aCurrentScore>aLoopBestScore) {
 								aLoopBestScore=aCurrentScore;
@@ -305,8 +304,8 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 							}
 						}
 					}
-					insertSymbols(iCipherString, apSymbolMap, &aBestChoiceSoFar, aPos);
 				}
+				aMappedSymbol->second=aBestChoiceSoFar;
 			}
 
 			if (aTolerated>iFuzzy*iCipherString.length())
@@ -350,7 +349,7 @@ int main( int argc, char* argv[] ) {
 	long double aRandom=0.0;
 	long double aFuzzy=0.05;
 
-	std::cout << "cDecryptor Version 14.10.2020 17:36" << std::endl;
+	std::cout << "cDecryptor Version 15.10.2020 17:59" << std::endl;
 
 	{
 		int c;
