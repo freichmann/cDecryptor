@@ -260,7 +260,7 @@ void hillclimber(const unsigned long long iThread, const std::unordered_map<unsi
 		long double aLoopBestScore=score(apClear, ipNorms, iLog);
 
 		if (checkBest(aLoopBestScore, apClear))
-			logTime("Thread:", iThread, "Score:", aLoopBestScore, iLog->str(), aCurrentTolerance, *apClear);
+			logTime("Thread:", iThread, "Score:", aLoopBestScore, iLog->str(), "Tolerance:", aCurrentTolerance, *apClear);
 
 		if (aVerbose)
 			logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, *apClear);
