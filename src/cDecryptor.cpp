@@ -351,7 +351,7 @@ int main( int argc, char* argv[] ) {
 	readNorms(aNGramsFiles, aNorms);
 
 	computeScoreStatistics(aTextFile, aNorms, aCipherString);
-	std::cout << computePerfectScore(aNorms) << std::endl;
+	std::cout << "Best possible score: " << computePerfectScore(aNorms) << std::endl;
 
 	if (aSeed.length()>0)
 		std::cout << "Seed: " << Score(aNorms, aSeed) << " " << aSeed << std::endl;
