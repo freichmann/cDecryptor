@@ -18,7 +18,7 @@ public:
 	unsigned long _count;
 	long double _mean;
 	long double _sigma;
-	std::unordered_map<std::string, unsigned long long> *_NGramMap;
+	std::unordered_map<std::string, unsigned long long> _NGramMap;
 
 	NGram(unsigned int);
 	~NGram();
