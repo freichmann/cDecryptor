@@ -18,7 +18,6 @@
 
 class Score {
 private:
-	long double logFac(const unsigned long long&);
 	long double lnGauss(const long double& iX, const long double& iMean, const long double& iSigma);
 	std::ostringstream _log;
 	long double _score;

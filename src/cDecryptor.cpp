@@ -265,7 +265,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 	}
 }
 
-long double computePerfectScore(std::unordered_map<unsigned long long, NGram*>& aNorms) {
+void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& aNorms) {
 	long double aLnPerfect = 0.0;
 	for (std::unordered_map<unsigned long long, NGram*>::iterator i =
 			aNorms.begin(); i != aNorms.end(); ++i) {
@@ -279,10 +279,10 @@ long double computePerfectScore(std::unordered_map<unsigned long long, NGram*>& 
 		<< aLnNGramPerfect << std::endl;
 		aLnPerfect += aLnNGramPerfect;
 	}
-	return aLnPerfect;
+	std::cout << "Best possible score: " << aLnPerfect << std::endl;
 }
 
-int main( int argc, char* argv[] ) {
+int main(int argc, char* argv[]) {
 	std::list<std::string> aNGramsFiles;
 	std::string aCipherFile;
 	std::string aTextFile;
@@ -292,7 +292,7 @@ int main( int argc, char* argv[] ) {
 	long double aRandom=0.2;
 	long double aFuzzy=0.05;
 
-	std::cout << "cDecryptor Version 23.10.2020 17:17" << std::endl;
+	std::cout << "cDecryptor Version 24.10.2020 13:55" << std::endl;
 
 	{
 		int c;
@@ -351,7 +351,7 @@ int main( int argc, char* argv[] ) {
 	readNorms(aNGramsFiles, aNorms);
 
 	computeScoreStatistics(aTextFile, aNorms, aCipherString);
-	std::cout << "Best possible score: " << computePerfectScore(aNorms) << std::endl;
+	printBestPossibleScore(aNorms);
 
 	if (aSeed.length()>0)
 		std::cout << "Seed: " << Score(aNorms, aSeed) << " " << aSeed << std::endl;

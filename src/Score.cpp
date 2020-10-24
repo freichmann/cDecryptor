@@ -44,15 +44,15 @@ Score& Score::operator=(const Score& iThat) {
 	return *this;
 }
 
-long double Score::Score::logFac(const unsigned long long& iK) {
+long double Score::Score::lnGauss(const long double& iX, const long double& iMean, const long double& iSigma) {
+	return -0.5*powl((iX-iMean)/iSigma,2)-logl(iSigma)-logl(sqrtl(2*M_PI));
+}
+
+long double logFac(const unsigned long long& iK) {
 	long double aLogFac=0;
 	for (unsigned long long i=2; i<=iK; i++)
 		aLogFac+=logl(i);
 	return aLogFac;
-}
-
-long double Score::Score::lnGauss(const long double& iX, const long double& iMean, const long double& iSigma) {
-	return -0.5*powl((iX-iMean)/iSigma,2)-logl(iSigma)-logl(sqrtl(2*M_PI));
 }
 
 long double Score::Score::score(const std::string& iCandidate, const std::unordered_map<unsigned long long, NGram*>& ipNormNGrams) {
