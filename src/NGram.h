@@ -11,7 +11,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
-#include "GaussNorm.h"
+
+#include "GaussianNorm.h"
 
 class NGram {
 public:

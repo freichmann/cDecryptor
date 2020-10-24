@@ -22,7 +22,7 @@ std::mutex aBestScoreMutex;
 std::mutex aOutputMutex;
 Score aGlobalBestScore;
 std::string aGlobalBestSolution;
-std::unordered_map<unsigned long long, GaussNorm> aGlobalNormVector;
+std::unordered_map<unsigned long long, GaussianNorm> aGlobalScoreStatistics;
 bool aVerbose=false;
 
 void readCipher(const std::string& aCipherfile, std::string& iCipher) {
@@ -124,7 +124,7 @@ void computeScoreStatistics(const std::string& iTextFile, std::unordered_map<uns
 
 	aFile.close();
 	std::vector<Score> aScores;
-	aGlobalNormVector.clear();
+	aGlobalScoreStatistics.clear();
 	for (std::unordered_map<unsigned long long, NGram*>::iterator i=ioNorms.begin(); i != ioNorms.end(); ++i) {
 		aScores.clear();
 		std::unordered_map<unsigned long long, NGram*> aSubNorm;
@@ -143,7 +143,7 @@ void computeScoreStatistics(const std::string& iTextFile, std::unordered_map<uns
 			aSigma += powl(j->values().find(i->first)->second - aMean, 2);
 		aSigma=sqrtl(aSigma/(aScores.size() - 1));
 
-		aGlobalNormVector.insert(std::pair<unsigned long long , GaussNorm>(i->first,GaussNorm(aMean,aSigma)));
+		aGlobalScoreStatistics.insert(std::pair<unsigned long long , GaussianNorm>(i->first,GaussianNorm(aMean,aSigma)));
 	}
 	delete apString;
 }
@@ -185,14 +185,14 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 
 	std::string aClear;
 
-	Score aClimberBestScore(iNorms, aGlobalNormVector, aClear);
+	Score aClimberBestScore(iNorms, aGlobalScoreStatistics, aClear);
 	std::string aClimberBestSolution=aClear;
 
 	while (true) {
 		bool aLoopImproved;
 
 		buildClear(iCipherString, aSymbolMap, aClear);
-		Score aLoopBestScore(iNorms, aGlobalNormVector, aClear);
+		Score aLoopBestScore(iNorms, aGlobalScoreStatistics, aClear);
 
 		if (checkIfGlobalBest(aLoopBestScore, aClear)) {
 			logTime("Thread:", iThread, "Score:", aLoopBestScore, "Tolerance:", aCurrentTolerance, aClear);
@@ -214,10 +214,10 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 						aMappedSymbol->second=aMappedLetter->first.at(0);
 						buildClear(iCipherString, aSymbolMap, aClear);
 
-						Score aCurrentScore(iNorms, aGlobalNormVector, aClear);
+						Score aCurrentScore(iNorms, aGlobalScoreStatistics, aClear);
 						long double aTolerance=aCurrentTolerance*aDoubleDistribution(aGenerator);
 
-						if (aCurrentScore.rate()*(1.0-aTolerance)>aLastScore.rate()) {
+						if (aCurrentScore.likelihood()*(1.0-aTolerance)>aLastScore.likelihood()) {
 							if (aCurrentScore<aLastScore)
 								aTolerated++;
 
@@ -254,7 +254,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 
 		if (aVerbose) {
 			buildClear(iCipherString, aSymbolMap, aClear);
-			aLoopBestScore=Score(iNorms, aGlobalNormVector, aClear);
+			aLoopBestScore=Score(iNorms, aGlobalScoreStatistics, aClear);
 
 			logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear);
 		}
@@ -273,12 +273,12 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& aNorms) {
 	long double aLnPerfect = 0.0;
 	for (std::unordered_map<unsigned long long, NGram*>::iterator i=aNorms.begin(); i != aNorms.end(); ++i) {
-		long double aLnNGramPerfect = -logl(sqrtl(2.0 * M_PI) * aGlobalNormVector.at(i->first)._sigma);
+		long double aLnNGramPerfect = -logl(sqrtl(2.0 * M_PI) * aGlobalScoreStatistics.at(i->first)._sigma);
 		std::cout << setiosflags(std::ios::fixed) << std::setprecision(6)
 		<< "NGram length:" << i->second->_length << " NGrams:"
 		<< i->second->_NGramMap.size() << " Samples:"
-		<< i->second->_count << " Mean:" << aGlobalNormVector.at(i->first)._mean
-		<< " StdDev:" << aGlobalNormVector.at(i->first)._sigma << " Perfect: "
+		<< i->second->_count << " Mean:" << aGlobalScoreStatistics.at(i->first)._mean
+		<< " StdDev:" << aGlobalScoreStatistics.at(i->first)._sigma << " Perfect: "
 		<< aLnNGramPerfect << std::endl;
 		aLnPerfect += aLnNGramPerfect;
 	}
@@ -295,7 +295,7 @@ int main(int argc, char* argv[]) {
 	long double aRandom=0.2;
 	long double aFuzzy=0.05;
 
-	std::cout << "cDecryptor Version 24.10.2020 20:03" << std::endl;
+	std::cout << "cDecryptor Version 24.10.2020 23:04" << std::endl;
 
 	{
 		int c;
@@ -357,9 +357,9 @@ int main(int argc, char* argv[]) {
 	printBestPossibleScore(aNorms);
 
 	if (aSeed.length()>0)
-		std::cout << "Seed: " << Score(aNorms, aGlobalNormVector, aSeed) << " " << aSeed << std::endl;
+		std::cout << "Seed: " << Score(aNorms, aGlobalScoreStatistics, aSeed) << " " << aSeed << std::endl;
 
-	aGlobalBestScore=Score(aNorms, aGlobalNormVector, std::string(aCipherString.length(), '.'));
+	aGlobalBestScore=Score(aNorms, aGlobalScoreStatistics, std::string(aCipherString.length(), '.'));
 
 	std::vector<std::thread> aThreads[aThreadsCount];
 	for (unsigned long long aThread=0; aThread<aThreadsCount; aThread++)

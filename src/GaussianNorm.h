@@ -5,18 +5,18 @@
  *      Author: Fritz Reichmann
  */
 
-#ifndef SRC_GAUSSNORM_H_
-#define SRC_GAUSSNORM_H_
+#ifndef SRC_GAUSSIANNORM_H_
+#define SRC_GAUSSIANNORM_H_
 
 #include <tgmath.h>
 
-class GaussNorm {
+class GaussianNorm {
 public:
 	const long double _mean;
 	const long double _sigma;
 
-	GaussNorm(const long double&, const long double&);
-	virtual ~GaussNorm();
+	GaussianNorm(const long double&, const long double&);
+	virtual ~GaussianNorm();
 	long double lnValue(const long double&) const;
 };
 
