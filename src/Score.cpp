@@ -89,7 +89,7 @@ long double Score::Score::score(const std::string& iCandidate, const std::unorde
 			aLoopScore+=b->second*logl(aP)-logFac(b->second);
 		}
 
-		if (aNormNGram->second->_mean<0) {
+		if (!std::isnan(aNormNGram->second->_mean)) {
 			const long double aLnGaussScore=lnGauss(aLoopScore, aNormNGram->second->_mean, aNormNGram->second->_sigma);
 			aScore+=aLnGaussScore;
 			if (!aFirstLog)

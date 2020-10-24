@@ -13,7 +13,6 @@
 #include <tgmath.h>
 #include <iostream>
 
-
 #include "NGram.h"
 
 class Score {
