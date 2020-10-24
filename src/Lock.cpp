@@ -2,7 +2,7 @@
  * Lock.cpp
  *
  *  Created on: 11.10.2020
- *      Author: fritz
+ *      Author: Fritz Reichmann
  */
 
 #include "Lock.h"

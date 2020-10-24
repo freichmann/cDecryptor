@@ -11,13 +11,12 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
+#include "GaussNorm.h"
 
 class NGram {
 public:
 	unsigned int _length;
 	unsigned long _count;
-	long double _mean;
-	long double _sigma;
 	std::unordered_map<std::string, unsigned long long> _NGramMap;
 
 	NGram(unsigned int);

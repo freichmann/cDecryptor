@@ -2,50 +2,68 @@
  * Score.cpp
  *
  *  Created on: Oct 23, 2020
- *      Author: freichmann
+ *      Author: Fritz Reichmann
  */
 
 #include "Score.h"
 
 Score::Score::Score() {
-	_score=0.0;
 }
 
-Score::Score::Score(const std::unordered_map<unsigned long long, NGram*>& ipNorms, const std::string &iClear) : _score(score(iClear, ipNorms)) {
+Score::Score::Score(const std::unordered_map<unsigned long long, NGram*>& ipNorms, const std::string &iClear) {
+	computeScores(iClear, ipNorms);
 }
 
-Score::Score::Score(const Score& iScore) : _score(iScore._score) {
-	_log.str(iScore._log.str());
+Score::Score::Score(const std::unordered_map<unsigned long long, NGram*>& ipNorms, const std::unordered_map<unsigned long long, GaussNorm>& iGaussNorm, const std::string &iClear) {
+	computeScores(iClear, ipNorms);
+	compareToNormal(iGaussNorm);
+}
+
+Score::Score::Score(const Score& iScore) : _score(iScore._score), _rated(iScore._rated) {
 }
 
 Score::Score::~Score() {
 }
 
-long double Score::Score::rate() const {
+const std::unordered_map<unsigned long long, long double> Score::Score::values() const {
 	return _score;
 }
 
+const long double Score::Score::rate() const {
+	if (std::isnan(_rated))
+		throw std::string("Score not rated!");
+	else
+		return _rated;
+}
+
 bool Score::operator>(const Score& iThat) const {
-	return this->_score>iThat._score;
+	return this->rate()>iThat.rate();
 }
 
 bool Score::operator<(const Score& iThat) const {
-	return this->_score<iThat._score;
+	return this->rate()<iThat.rate();
 }
 
 std::ostream& operator<<(std::ostream& iOut, const Score& iScore) {
-	iOut << iScore.rate() << " " << iScore._log.str();
+	bool aFirst=true;
+
+	iOut << iScore.rate() << " ";
+
+	for (std::unordered_map<unsigned long long, long double>::const_iterator aI=iScore._score.cbegin(); aI!=iScore._score.cend(); ++aI) {
+		if (!aFirst)
+			iOut << " ";
+		else
+			aFirst=false;
+		iOut << aI->first << ":" << aI->second;
+	}
 	return iOut;
 }
 
 Score& Score::operator=(const Score& iThat) {
-	this->_score=iThat._score;
-	_log=std::ostringstream(iThat._log.str());
-	return *this;
-}
+	this->_score=std::unordered_map<unsigned long long, long double>(iThat._score);
+	this->_rated=iThat._rated;
 
-long double Score::Score::lnGauss(const long double& iX, const long double& iMean, const long double& iSigma) {
-	return -0.5*powl((iX-iMean)/iSigma,2)-logl(iSigma)-logl(sqrtl(2*M_PI));
+	return *this;
 }
 
 long double logFac(const unsigned long long& iK) {
@@ -55,12 +73,14 @@ long double logFac(const unsigned long long& iK) {
 	return aLogFac;
 }
 
-long double Score::Score::score(const std::string& iCandidate, const std::unordered_map<unsigned long long, NGram*>& ipNormNGrams) {
-	long double aScore=0;
-	bool aFirstLog=true;
+void Score::Score::compareToNormal(const std::unordered_map<unsigned long long, GaussNorm>& iGaussNorm) {
+	_rated=0;
+	for (std::unordered_map<unsigned long long, long double>::const_iterator aI=_score.cbegin(); aI!=_score.cend(); ++aI)
+		_rated+=iGaussNorm.at(aI->first).lnValue(aI->second);
+}
 
-	_log.str("");
-	_log.clear();
+void Score::Score::computeScores(const std::string& iCandidate, const std::unordered_map<unsigned long long, NGram*>& ipNormNGrams) {
+	_score.clear();
 
 	std::unordered_map<std::string, unsigned long long> aSolutionCandidateNGram;
 
@@ -68,6 +88,7 @@ long double Score::Score::score(const std::string& iCandidate, const std::unorde
 		long double aLoopScore=0;
 		const unsigned int aLength=aNormNGram->second->_length;
 
+		aSolutionCandidateNGram.clear();
 		for (unsigned int i=0; i+aLength<=iCandidate.length(); i++) {
 			const std::string aSub=iCandidate.substr(i, aLength);
 			std::unordered_map<std::string, unsigned long long>::iterator b=aSolutionCandidateNGram.find(aSub);
@@ -89,19 +110,6 @@ long double Score::Score::score(const std::string& iCandidate, const std::unorde
 			aLoopScore+=b->second*logl(aP)-logFac(b->second);
 		}
 
-		if (!std::isnan(aNormNGram->second->_mean)) {
-			const long double aLnGaussScore=lnGauss(aLoopScore, aNormNGram->second->_mean, aNormNGram->second->_sigma);
-			aScore+=aLnGaussScore;
-			if (!aFirstLog)
-				_log << " ";
-			else
-				aFirstLog=false;
-			_log << aLength << ":" << aLnGaussScore;
-		} else
-			aScore+=aLoopScore;
-
-		aSolutionCandidateNGram.clear();
+		_score.insert(std::pair<unsigned long long, long double>(aLength,aLoopScore));
 	}
-
-	return aScore;
 }

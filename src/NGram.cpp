@@ -5,16 +5,12 @@
  *      Author: Fritz Reichmann
  */
 
-#include <iostream>
 #include <utility>
-#include <limits>
 #include "NGram.h"
 
 NGram::NGram(unsigned int iLength) {
 	_length=iLength;
 	NGram::_count=0;
-	NGram::_mean=std::numeric_limits<double>::quiet_NaN();
-	NGram::_sigma=0;
 }
 
 NGram::~NGram() {
