@@ -107,7 +107,7 @@ void Score::Score::computeScores(const std::string& iCandidate, const std::unord
 			else
 				aP=aNeverSeen;
 
-			aLoopScore+=b->second*logl(aP)-logFac(b->second);
+			aLoopScore+=b->second*logl(aP)-logFac(b->second); // Poisson(b)-Poisson(0) (+const)
 		}
 
 		_score.insert(std::pair<unsigned long long, long double>(aLength,aLoopScore));
