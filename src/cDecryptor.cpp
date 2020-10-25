@@ -369,5 +369,8 @@ int main(int argc, char* argv[]) {
 	for (std::vector<std::thread>::iterator i=aThreads->begin(); i!=aThreads->end(); ++i)
 		(*i).join();
 
+	for (std::unordered_map<unsigned long long, NGram*>::iterator aI=aNorms.begin(); aI!=aNorms.end(); ++aI)
+		delete aI->second;
+
 	return EXIT_SUCCESS;
 }
