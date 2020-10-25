@@ -114,11 +114,11 @@ bool checkIfGlobalBest(const Score& iScore, const std::string& iClear) {
 }
 
 void computeScoreStatistics(const std::string& iTextFile, std::unordered_map<unsigned long long, NGram*>& ioNorms, const std::string& iCipherString) {
-	std::string* apString = new std::string();
+	std::string aString;
 	std::ifstream aFile(iTextFile);
 	if (aFile.is_open())
 		while (!aFile.eof())
-			aFile >> *apString;
+			aFile >> aString;
 	else
 		throw "Can not open file";
 
@@ -129,8 +129,8 @@ void computeScoreStatistics(const std::string& iTextFile, std::unordered_map<uns
 		aScores.clear();
 		std::unordered_map<unsigned long long, NGram*> aSubNorm;
 		aSubNorm.insert(std::pair<unsigned long long, NGram*>(i->first, i->second));
-		for (unsigned long long aPos = 0; aPos < apString->length() - iCipherString.length()+1; aPos++) {
-			std::string aSub = apString->substr(aPos, iCipherString.length());
+		for (unsigned long long aPos = 0; aPos < aString.length() - iCipherString.length()+1; aPos++) {
+			std::string aSub = aString.substr(aPos, iCipherString.length());
 			aScores.push_back(Score(aSubNorm, aSub));
 		}
 
@@ -145,7 +145,6 @@ void computeScoreStatistics(const std::string& iTextFile, std::unordered_map<uns
 
 		aGlobalScoreStatistics.insert(std::pair<unsigned long long , GaussianNorm>(i->first,GaussianNorm(aMean,aSigma)));
 	}
-	delete apString;
 }
 
 void log() {
