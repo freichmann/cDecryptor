@@ -291,8 +291,8 @@ int main(int argc, char* argv[]) {
 	std::string aSeed="";
 	unsigned int aMaxIter=250;
 	unsigned int aThreadsCount=1;
-	long double aRandom=0.2;
-	long double aFuzzy=0.05;
+	long double aRandom=0.1;
+	long double aFuzzy=0.015;
 
 	std::cout << "cDecryptor Version 26.10.2020 13:23" << std::endl;
 
