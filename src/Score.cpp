@@ -7,47 +7,25 @@
 
 #include "Score.h"
 
-Score::Score::Score() {
+Score::Score() {
 }
 
-Score::Score::Score(const std::unordered_map<unsigned long long, NGram*>& ipNorms, const std::string &iClear) {
+Score::Score(const std::unordered_map<unsigned long long, NGram*>& ipNorms, const std::string &iClear) {
 	computeMetrics(iClear, ipNorms);
 }
 
-Score::Score::Score(const std::unordered_map<unsigned long long, NGram*>& ipNorms, const std::unordered_map<unsigned long long, GaussianNorm>& iGaussNorm, const std::string &iClear) {
-	computeMetrics(iClear, ipNorms);
-	compareWithNormal(iGaussNorm);
+Score::Score(const Score& iScore) : _metrics(iScore._metrics) {
 }
 
-Score::Score::Score(const Score& iScore) : _metrics(iScore._metrics), _rated(iScore._rated) {
+Score::~Score() {
 }
 
-Score::Score::~Score() {
-}
-
-const std::unordered_map<unsigned long long, long double> Score::Score::values() const {
+const std::unordered_map<unsigned long long, long double> Score::values() const {
 	return _metrics;
-}
-
-const long double Score::Score::likelihood() const {
-	if (std::isnan(_rated))
-		throw std::string("Score not rated!");
-	else
-		return _rated;
-}
-
-bool Score::operator>(const Score& iThat) const {
-	return this->likelihood()>iThat.likelihood();
-}
-
-bool Score::operator<(const Score& iThat) const {
-	return this->likelihood()<iThat.likelihood();
 }
 
 std::ostream& operator<<(std::ostream& iOut, const Score& iScore) {
 	bool aFirst=true;
-
-	iOut << iScore.likelihood() << " ";
 
 	for (std::unordered_map<unsigned long long, long double>::const_iterator aI=iScore._metrics.cbegin(); aI!=iScore._metrics.cend(); ++aI) {
 		if (!aFirst)
@@ -61,7 +39,6 @@ std::ostream& operator<<(std::ostream& iOut, const Score& iScore) {
 
 Score& Score::operator=(const Score& iThat) {
 	this->_metrics=std::unordered_map<unsigned long long, long double>(iThat._metrics);
-	this->_rated=iThat._rated;
 
 	return *this;
 }
@@ -73,13 +50,7 @@ long double logFac(const unsigned long long& iK) {
 	return aLogFac;
 }
 
-void Score::Score::compareWithNormal(const std::unordered_map<unsigned long long, GaussianNorm>& iGaussNorm) {
-	_rated=0;
-	for (std::unordered_map<unsigned long long, long double>::const_iterator aI=_metrics.cbegin(); aI!=_metrics.cend(); ++aI)
-		_rated+=iGaussNorm.at(aI->first).lnValue(aI->second);
-}
-
-void Score::Score::computeMetrics(const std::string& iCandidate, const std::unordered_map<unsigned long long, NGram*>& ipNormNGrams) {
+void Score::computeMetrics(const std::string& iCandidate, const std::unordered_map<unsigned long long, NGram*>& ipNormNGrams) {
 	_metrics.clear();
 
 	std::unordered_map<std::string, unsigned long long> aSolutionCandidateNGram;
