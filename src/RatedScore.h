@@ -2,19 +2,17 @@
  * RatedScore.h
  *
  *  Created on: Oct 26, 2020
- *      Author: freichmann
+ *      Author: Fritz Reichmann
  */
 
 #ifndef SRC_RATEDSCORE_H_
 #define SRC_RATEDSCORE_H_
 
-#include <limits>
-
 #include "Score.h"
 
 class RatedScore: public Score {
 private:
-	long double _rated=std::numeric_limits<long double>::quiet_NaN();
+	long double _rated;
 	void compareWithNormal(const std::unordered_map<unsigned long long, GaussianNorm>&);
 
 public:

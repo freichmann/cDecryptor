@@ -294,7 +294,7 @@ int main(int argc, char* argv[]) {
 	long double aRandom=0.1;
 	long double aFuzzy=0.015;
 
-	std::cout << "cDecryptor Version 26.10.2020 13:23" << std::endl;
+	std::cout << "cDecryptor Version 27.10.2020 16:32" << std::endl;
 
 	{
 		int c;

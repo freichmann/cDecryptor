@@ -2,12 +2,13 @@
  * RatedScore.cpp
  *
  *  Created on: Oct 26, 2020
- *      Author: freichmann
+ *      Author: Fritz Reichmann
  */
 
+#include <limits>
 #include "RatedScore.h"
 
-RatedScore::RatedScore() {
+RatedScore::RatedScore() : _rated(std::numeric_limits<double>::quiet_NaN()) {
 }
 
 RatedScore::~RatedScore() {

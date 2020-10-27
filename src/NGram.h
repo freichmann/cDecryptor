@@ -16,13 +16,13 @@
 
 class NGram {
 public:
-	unsigned int _length;
-	unsigned long _count;
+	const unsigned int _length;
+	unsigned long long _count;
 	std::unordered_map<std::string, unsigned long long> _NGramMap;
 
-	NGram(unsigned int);
+	NGram(const unsigned int&);
 	~NGram();
-	void add(unsigned long long, std::string);
+	void add(const unsigned long long&, const std::string&);
 };
 
 #endif /* SRC_NGRAM_H_ */

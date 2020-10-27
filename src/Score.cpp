@@ -43,25 +43,17 @@ Score& Score::operator=(const Score& iThat) {
 	return *this;
 }
 
-long double logFac(const unsigned long long& iK) {
-	long double aLogFac=0;
-	for (unsigned long long i=2; i<=iK; i++)
-		aLogFac+=logl(i);
-	return aLogFac;
-}
-
 void Score::computeMetrics(const std::string& iCandidate, const std::unordered_map<unsigned long long, NGram*>& ipNormNGrams) {
 	_metrics.clear();
 
 	std::unordered_map<std::string, unsigned long long> aSolutionCandidateNGram;
 
 	for (std::unordered_map<unsigned long long, NGram*>::const_iterator aNormNGram=ipNormNGrams.cbegin(); aNormNGram!=ipNormNGrams.cend(); ++aNormNGram) {
-		long double aLoopScore=0;
-		const unsigned int aLength=aNormNGram->second->_length;
+		long double aScore=0;
 
 		aSolutionCandidateNGram.clear();
-		for (unsigned int i=0; i+aLength<=iCandidate.length(); i++) {
-			const std::string aSub=iCandidate.substr(i, aLength);
+		for (unsigned int i=0; i+aNormNGram->second->_length<=iCandidate.length(); i++) {
+			const std::string aSub=iCandidate.substr(i, aNormNGram->second->_length);
 			std::unordered_map<std::string, unsigned long long>::iterator b=aSolutionCandidateNGram.find(aSub);
 			if (b!=aSolutionCandidateNGram.end())
 				b->second++;
@@ -69,18 +61,18 @@ void Score::computeMetrics(const std::string& iCandidate, const std::unordered_m
 				aSolutionCandidateNGram.insert(std::pair<std::string, unsigned long long>(aSub, 1));
 		}
 
-		const long double aNeverSeen=logl(2)/(long double)aNormNGram->second->_count;
+		const long double aLnNotInCorpus=logl(logl(2)/(long double)aNormNGram->second->_count);
 		for (std::unordered_map<std::string, unsigned long long>::const_iterator b=aSolutionCandidateNGram.cbegin(); b!=aSolutionCandidateNGram.cend(); ++b) {
-			long double aP;
+			long double aLnP;
 			std::unordered_map<std::string, unsigned long long>::const_iterator j=aNormNGram->second->_NGramMap.find(b->first);
 			if (j!=aNormNGram->second->_NGramMap.end())
-				aP=(long double)j->second/(long double)aNormNGram->second->_count;
+				aLnP=logl((long double)j->second/(long double)aNormNGram->second->_count);
 			else
-				aP=aNeverSeen;
+				aLnP=aLnNotInCorpus;
 
-			aLoopScore+=b->second*logl(aP)-logFac(b->second); // Metric: Poisson(b)-Poisson(0) (+const)
+			aScore+=b->second*aLnP-lgammal(b->second+1); // Metric: Poisson(b)-Poisson(0) (+const)
 		}
 
-		_metrics.insert(std::pair<unsigned long long, long double>(aLength,aLoopScore));
+		_metrics.insert(std::pair<unsigned long long, long double>(aNormNGram->second->_length, aScore));
 	}
 }

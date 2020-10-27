@@ -8,15 +8,13 @@
 #include <utility>
 #include "NGram.h"
 
-NGram::NGram(unsigned int iLength) {
-	_length=iLength;
-	NGram::_count=0;
+NGram::NGram(const unsigned int& iLength) : _length(iLength), _count(0) {
 }
 
 NGram::~NGram() {
 }
 
-void NGram::add(unsigned long long iCount, std::string iString) {
+void NGram::add(const unsigned long long& iCount, const std::string& iString) {
 	if (iString.length()==_length) {
 		std::unordered_map<std::string,unsigned long long>::iterator i=_NGramMap.find(iString);
 		if (i!=_NGramMap.end())
