@@ -61,12 +61,12 @@ void Score::computeMetrics(const std::string& iCandidate, const std::unordered_m
 				aSolutionCandidateNGram.insert(std::pair<std::string, unsigned long long>(aSub, 1));
 		}
 
-		const long double aLnNotInCorpus=logl(logl(2))-logl((long double)aNormNGram->second->_count);
+		const long double aLnNotInCorpus=logl(logl(2))-logl(aNormNGram->second->_count);
 		for (std::unordered_map<std::string, unsigned long long>::const_iterator b=aSolutionCandidateNGram.cbegin(); b!=aSolutionCandidateNGram.cend(); ++b) {
 			long double aLnP;
 			std::unordered_map<std::string, unsigned long long>::const_iterator j=aNormNGram->second->_NGramMap.find(b->first);
 			if (j!=aNormNGram->second->_NGramMap.end())
-				aLnP=logl((long double)j->second)-logl((long double)aNormNGram->second->_count);
+				aLnP=logl(j->second)-logl(aNormNGram->second->_count);
 			else
 				aLnP=aLnNotInCorpus;
 
