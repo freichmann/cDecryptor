@@ -66,7 +66,7 @@ void Score::computeMetrics(const std::string& iCandidate, const std::unordered_m
 			long double aLnP;
 			std::unordered_map<std::string, unsigned long long>::const_iterator j=aNormNGram->second->_NGramMap.find(b->first);
 			if (j!=aNormNGram->second->_NGramMap.end())
-				aLnP=logl((long double)j->second/(long double)aNormNGram->second->_count);
+				aLnP=logl((long double)j->second)-logl((long double)aNormNGram->second->_count);
 			else
 				aLnP=aLnNotInCorpus;
 
