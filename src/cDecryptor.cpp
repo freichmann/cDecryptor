@@ -9,6 +9,7 @@
 #include <vector>
 #include <random>
 #include <iomanip>
+#include <csignal>
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
@@ -284,10 +285,9 @@ void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& aNor
 	std::cout << "Best possible score: " << aLnPerfect << std::endl;
 }
 
-void signalHandler( int signum ) {
-   std::cout << "Interrupt signal " << signum << " received. Exiting." << std::endl;
-
-   exit(signum);
+void signalHandler( int iSigNum ) {
+   std::cout << "Interrupt signal " << iSigNum << " received. Exiting." << std::endl;
+   exit(iSigNum);
 }
 
 int main(int argc, char* argv[]) {
