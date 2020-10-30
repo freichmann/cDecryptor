@@ -284,6 +284,12 @@ void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& aNor
 	std::cout << "Best possible score: " << aLnPerfect << std::endl;
 }
 
+void signalHandler( int signum ) {
+   std::cout << "Interrupt signal " << signum << " received. Exiting." << std::endl;
+
+   exit(signum);
+}
+
 int main(int argc, char* argv[]) {
 	std::list<std::string> aNGramsFiles;
 	std::string aCipherFile;
@@ -294,7 +300,8 @@ int main(int argc, char* argv[]) {
 	long double aRandom=0.1;
 	long double aFuzzy=0.015;
 
-	std::cout << "cDecryptor Version 27.10.2020 16:32" << std::endl;
+	std::cout << "cDecryptor Version 30.10.2020 09:30" << std::endl;
+	signal(SIGINT, signalHandler);
 
 	{
 		int c;
