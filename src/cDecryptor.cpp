@@ -185,6 +185,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 
 	std::string aClear;
 
+	buildClear(iCipherString, aSymbolMap, aClear);
 	RatedScore aClimberBestScore(Score(iNorms, aClear), aGlobalScoreStatistics);
 	std::string aClimberBestSolution=aClear;
 
@@ -265,6 +266,8 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 			partiallyShuffleMap(aSymbolMap, iRandomFraction);
 		} else {
 			randomMapInit(iCipherString, aSymbolMap);
+			buildClear(iCipherString, aSymbolMap, aClimberBestSolution);
+			aClimberBestScore=RatedScore(Score(iNorms, aClimberBestSolution), aGlobalScoreStatistics);
 			aConsecutiveFailuresToImprove=0;
 		}
 	}
@@ -300,7 +303,7 @@ int main(int argc, char* argv[]) {
 	long double aRandom=0.1;
 	long double aFuzzy=0.015;
 
-	std::cout << "cDecryptor Version 30.10.2020 09:30" << std::endl;
+	std::cout << "cDecryptor Version 10.11.2020 15:16" << std::endl;
 	signal(SIGINT, signalHandler);
 
 	{
