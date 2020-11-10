@@ -167,9 +167,7 @@ void logTime(Args ... args) {
 }
 
 void hillclimber(const unsigned long long& iThread, const std::unordered_map<unsigned long long, NGram*>& iNorms, const std::string& iCipherString, const std::string &iSeedString, const long double& iRandomFraction, const long double& iMaxIter, const long double& iFuzzy) {
-
 	std::unordered_map<char, char> aSymbolMap;
-
 	std::default_random_engine aGenerator;
 	aGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
 	std::uniform_int_distribution<unsigned int> aIntDistribution(0, iCipherString.length());
@@ -179,28 +177,23 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 	long double aCurrentTolerance=0.02;
 
 	randomMapInit(iCipherString, aSymbolMap);
-
 	if (iThread==0)
 		insertSymbols(iCipherString, aSymbolMap, iSeedString, 0);
 
-	std::string aClear;
-
-	buildClear(iCipherString, aSymbolMap, aClear);
-	RatedScore aClimberBestScore(Score(iNorms, aClear), aGlobalScoreStatistics);
-	std::string aClimberBestSolution=aClear;
-
 	while (true) {
-		bool aLoopImproved;
-
+		std::string aClear;
 		buildClear(iCipherString, aSymbolMap, aClear);
+		RatedScore aClimberBestScore(Score(iNorms, aClear), aGlobalScoreStatistics);
+		std::string aClimberBestSolution=aClear;
 		RatedScore aLoopBestScore(Score(iNorms, aClear), aGlobalScoreStatistics);
 
-		if (checkIfGlobalBest(aLoopBestScore, aClear)) {
+		if (checkIfGlobalBest(aLoopBestScore, aClear))
 			logTime("Thread:", iThread, "Score:", aLoopBestScore, "Tolerance:", aCurrentTolerance, aClear);
-		}
+
 		if (aVerbose)
 			logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear);
 
+		bool aLoopImproved;
 		do {
 			aLoopImproved=false;
 			RatedScore aLastScore(aLoopBestScore);
@@ -266,8 +259,6 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 			partiallyShuffleMap(aSymbolMap, iRandomFraction);
 		} else {
 			randomMapInit(iCipherString, aSymbolMap);
-			buildClear(iCipherString, aSymbolMap, aClimberBestSolution);
-			aClimberBestScore=RatedScore(Score(iNorms, aClimberBestSolution), aGlobalScoreStatistics);
 			aConsecutiveFailuresToImprove=0;
 		}
 	}
