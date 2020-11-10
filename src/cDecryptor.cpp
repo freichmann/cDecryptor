@@ -167,20 +167,21 @@ void logTime(Args ... args) {
 	log(args ...);
 }
 
-void checkIfLocalBest(const RatedScore& iLoopBestScore,
-		const std::string& iClear, unsigned long long& oCounterUntilDeepReset,
-		const long double& iMaxIter, const unsigned long long &iThread,
+bool checkIfLocalBest(const RatedScore& iLoopBestScore,
+		const std::string& iClear, const unsigned long long &iThread,
 		long double iCurrentTolerance, RatedScore& ioClimberBestScore,
 		std::string& oClimberBestSolution) {
 
 	if (iLoopBestScore>ioClimberBestScore) {
 		ioClimberBestScore = iLoopBestScore;
 		oClimberBestSolution = iClear;
-		oCounterUntilDeepReset = iMaxIter;
 
 		if (checkIfGlobalBest(iLoopBestScore, iClear))
 			logTime("Thread:", iThread, "Score:", iLoopBestScore, "Tolerance:", iCurrentTolerance, iClear);
-	}
+
+		return true;
+	} else
+		return false;
 }
 
 void hillclimber(const unsigned long long& iThread, const std::unordered_map<unsigned long long, NGram*>& iNorms, const std::string& iCipherString, const std::string &iSeedString, const long double& iRandomFraction, const long double& iMaxIter, const long double& iFuzzy) {
@@ -211,7 +212,8 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				if (aVerbose)
 					logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear);
 
-				checkIfLocalBest(aLoopBestScore, aClear, aCounterUntilReset, iMaxIter, iThread, aCurrentTolerance, aClimberBestScore, aClimberBestSolution);
+				if (checkIfLocalBest(aLoopBestScore, aClear, iThread, aCurrentTolerance, aClimberBestScore, aClimberBestSolution))
+					 aCounterUntilReset=iMaxIter;
 			}
 
 			bool aLoopImproved;
@@ -243,7 +245,8 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 									aLoopBestScore=aCurrentScore;
 									aLoopImproved=true;
 
-									checkIfLocalBest(aLoopBestScore, aClear, aCounterUntilReset, iMaxIter, iThread, aCurrentTolerance, aClimberBestScore, aClimberBestSolution);
+									if (checkIfLocalBest(aLoopBestScore, aClear, iThread, aCurrentTolerance, aClimberBestScore, aClimberBestSolution))
+										 aCounterUntilReset=iMaxIter;
 								}
 							}
 						}
@@ -309,7 +312,7 @@ int main(int argc, char* argv[]) {
 	long double aRandom=0.1;
 	long double aFuzzy=0.015;
 
-	std::cout << "cDecryptor Version 10.11.2020 17:28" << std::endl;
+	std::cout << "cDecryptor Version 10.11.2020 18:22" << std::endl;
 	signal(SIGINT, signalHandler);
 
 	{
