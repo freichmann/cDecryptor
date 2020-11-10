@@ -178,91 +178,91 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 	long double aCurrentTolerance=0.02;
 
 	randomMapInit(iCipherString, aSymbolMap);
+
 	if (iThread==0)
 		insertSymbols(iCipherString, aSymbolMap, iSeedString, 0);
 
-	std::string aClimberBestSolution=buildClear(iCipherString, aSymbolMap);
-	RatedScore aClimberBestScore(Score(iNorms, aClimberBestSolution), aGlobalScoreStatistics);
-
 	while (true) {
-		if (checkIfGlobalBest(aClimberBestScore, aClimberBestSolution))
-			logTime("Thread:", iThread, "Score:", aClimberBestScore, "Tolerance:", aCurrentTolerance, aClimberBestSolution);
+		std::string aClimberBestSolution=buildClear(iCipherString, aSymbolMap);
+		RatedScore aClimberBestScore(Score(iNorms, aClimberBestSolution), aGlobalScoreStatistics);
 
-		if (aVerbose)
-			logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurrentTolerance, "Score:", aClimberBestScore, aClimberBestSolution);
-
-		bool aLoopImproved;
 		RatedScore aLoopBestScore=aClimberBestScore;
-		do {
-			aLoopImproved=false;
-			RatedScore aLastScore=aLoopBestScore;
-			unsigned int aTolerated=0;
+		while (aCounterUntilDeepReset>0 || iMaxIter==0) {
+			if (aVerbose)
+				logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurrentTolerance, "Score:", aClimberBestScore, aClimberBestSolution);
 
-			std::unordered_map<std::string, unsigned long long> aAlphabet=iNorms.find(1)->second->_NGramMap;
-			for (std::unordered_map<char, char>::iterator aMappedSymbol=aSymbolMap.begin(); aMappedSymbol!=aSymbolMap.end(); ++aMappedSymbol) {
-				const char aBefore=aMappedSymbol->second;
-				char aBestChoiceSoFar=aBefore;
-				for (std::unordered_map<std::string, unsigned long long>::const_iterator aMappedLetter=aAlphabet.begin(); aMappedLetter!=aAlphabet.end(); ++aMappedLetter) {
-					if (aMappedLetter->first.at(0)!=aBefore) {
-						aMappedSymbol->second=aMappedLetter->first.at(0);
-						std::string aClear=buildClear(iCipherString, aSymbolMap);
+			if (checkIfGlobalBest(aClimberBestScore, aClimberBestSolution))
+				logTime("Thread:", iThread, "Score:", aClimberBestScore, "Tolerance:", aCurrentTolerance, aClimberBestSolution);
 
-						RatedScore aCurrentScore(Score(iNorms, aClear), aGlobalScoreStatistics);
-						long double aTolerance=aCurrentTolerance*aDoubleDistribution(aGenerator);
+			bool aLoopImproved;
+			do {
+				aLoopImproved=false;
+				RatedScore aLastScore=aLoopBestScore;
+				unsigned int aTolerated=0;
 
-						if (aCurrentScore.value()*(1.0-aTolerance)>aLastScore.value()) {
-							if (aCurrentScore<aLastScore)
-								aTolerated++;
+				std::unordered_map<std::string, unsigned long long> aAlphabet=iNorms.find(1)->second->_NGramMap;
+				for (std::unordered_map<char, char>::iterator aMappedSymbol=aSymbolMap.begin(); aMappedSymbol!=aSymbolMap.end(); ++aMappedSymbol) {
+					const char aBefore=aMappedSymbol->second;
+					char aBestChoiceSoFar=aBefore;
+					for (std::unordered_map<std::string, unsigned long long>::const_iterator aMappedLetter=aAlphabet.begin(); aMappedLetter!=aAlphabet.end(); ++aMappedLetter) {
+						if (aMappedLetter->first.at(0)!=aBefore) {
+							aMappedSymbol->second=aMappedLetter->first.at(0);
+							std::string aClear=buildClear(iCipherString, aSymbolMap);
 
-							aLastScore=aCurrentScore;
-							aBestChoiceSoFar=aMappedLetter->first.at(0);
+							RatedScore aCurrentScore(Score(iNorms, aClear), aGlobalScoreStatistics);
+							long double aTolerance=aCurrentTolerance*aDoubleDistribution(aGenerator);
 
-							if (aCurrentScore>aLoopBestScore) {
-								aLoopBestScore=aCurrentScore;
-								aLoopImproved=true;
+							if (aCurrentScore.value()*(1.0-aTolerance)>aLastScore.value()) {
+								if (aCurrentScore<aLastScore)
+									aTolerated++;
 
-								if (aCurrentScore>aClimberBestScore) {
-									aClimberBestScore=aCurrentScore;
-									aClimberBestSolution=aClear;
-									aCounterUntilDeepReset=iMaxIter;
+								aLastScore=aCurrentScore;
+								aBestChoiceSoFar=aMappedLetter->first.at(0);
 
-									if (checkIfGlobalBest(aCurrentScore, aClear))
-										logTime("Thread:", iThread, "Score:", aCurrentScore, "Tolerance:", aCurrentTolerance, aClear);
+								if (aCurrentScore>aLoopBestScore) {
+									aLoopBestScore=aCurrentScore;
+									aLoopImproved=true;
+
+									if (aCurrentScore>aClimberBestScore) {
+										aClimberBestScore=aCurrentScore;
+										aClimberBestSolution=aClear;
+										aCounterUntilDeepReset=iMaxIter;
+
+										if (checkIfGlobalBest(aCurrentScore, aClear))
+											logTime("Thread:", iThread, "Score:", aCurrentScore, "Tolerance:", aCurrentTolerance, aClear);
+									}
 								}
 							}
 						}
 					}
+					aMappedSymbol->second=aBestChoiceSoFar;
 				}
-				aMappedSymbol->second=aBestChoiceSoFar;
+
+				if (aTolerated>iFuzzy*iCipherString.length())
+					aCurrentTolerance*=0.95;
+				else {
+					aCurrentTolerance*=1.05;
+					if (aCurrentTolerance>1)
+						aCurrentTolerance=1;
+				}
+			} while (aLoopImproved);
+
+			if (aVerbose) {
+				std::string aClear=buildClear(iCipherString, aSymbolMap);
+				aLoopBestScore=RatedScore(Score(iNorms, aClear), aGlobalScoreStatistics);
+
+				logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear);
 			}
 
-			if (aTolerated>iFuzzy*iCipherString.length())
-				aCurrentTolerance*=0.95;
-			else {
-				aCurrentTolerance*=1.05;
-				if (aCurrentTolerance>1)
-					aCurrentTolerance=1;
+			if (iRandomFraction>0) {
+				insertSymbols(iCipherString, aSymbolMap, aClimberBestSolution, 0);
+				partiallyShuffleMap(aSymbolMap, iRandomFraction);
 			}
-		} while (aLoopImproved);
 
-		if (aVerbose) {
-			std::string aClear=buildClear(iCipherString, aSymbolMap);
-			aLoopBestScore=RatedScore(Score(iNorms, aClear), aGlobalScoreStatistics);
-
-			logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear);
+			aCounterUntilDeepReset--;
 		}
-
-		aCounterUntilDeepReset--;
-
-		if (aCounterUntilDeepReset>0 && iRandomFraction>0) {
-			insertSymbols(iCipherString, aSymbolMap, aClimberBestSolution, 0);
-			partiallyShuffleMap(aSymbolMap, iRandomFraction);
-		} else {
-			randomMapInit(iCipherString, aSymbolMap);
-			aClimberBestSolution=buildClear(iCipherString, aSymbolMap);
-			aClimberBestScore=RatedScore(Score(iNorms, aClimberBestSolution), aGlobalScoreStatistics);
-			aCounterUntilDeepReset=iMaxIter;
-		}
+		randomMapInit(iCipherString, aSymbolMap);
+		aCounterUntilDeepReset=iMaxIter;
 	}
 }
 
@@ -282,8 +282,8 @@ void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& aNor
 }
 
 void signalHandler( int iSigNum ) {
-   std::cout << "Interrupt signal " << iSigNum << " received. Exiting." << std::endl;
-   exit(iSigNum);
+	std::cout << "Interrupt signal " << iSigNum << " received. Exiting." << std::endl;
+	exit(iSigNum);
 }
 
 int main(int argc, char* argv[]) {
@@ -296,7 +296,7 @@ int main(int argc, char* argv[]) {
 	long double aRandom=0.1;
 	long double aFuzzy=0.015;
 
-	std::cout << "cDecryptor Version 10.11.2020 16:57" << std::endl;
+	std::cout << "cDecryptor Version 10.11.2020 17:28" << std::endl;
 	signal(SIGINT, signalHandler);
 
 	{
