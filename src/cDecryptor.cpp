@@ -167,17 +167,16 @@ void logTime(Args ... args) {
 	log(args ...);
 }
 
-bool checkIfLocalBest(const RatedScore& iLoopBestScore,
-		const std::string& iClear, const unsigned long long &iThread,
-		long double iCurrentTolerance, RatedScore& ioClimberBestScore,
-		std::string& oClimberBestSolution) {
+bool checkIfLocalBest(const RatedScore& iCandidateScore, const std::string& iCandidateSolution,
+		RatedScore& ioPreviousBestScore, std::string& oPreviousBestSolution,
+		const unsigned long long& iThread, long double& iCurrentTolerance) {
 
-	if (iLoopBestScore>ioClimberBestScore) {
-		ioClimberBestScore = iLoopBestScore;
-		oClimberBestSolution = iClear;
+	if (iCandidateScore>ioPreviousBestScore) {
+		ioPreviousBestScore = iCandidateScore;
+		oPreviousBestSolution = iCandidateSolution;
 
-		if (checkIfGlobalBest(iLoopBestScore, iClear))
-			logTime("Thread:", iThread, "Score:", iLoopBestScore, "Tolerance:", iCurrentTolerance, iClear);
+		if (checkIfGlobalBest(iCandidateScore, iCandidateSolution))
+			logTime("Thread:", iThread, "Score:", iCandidateScore, "Tolerance:", iCurrentTolerance, iCandidateSolution);
 
 		return true;
 	} else
@@ -203,6 +202,9 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 		std::string aClimberBestSolution=buildClear(iCipherString, aSymbolMap);
 		RatedScore aClimberBestScore(Score(iNorms, aClimberBestSolution), aGlobalScoreStatistics);
 
+		if (checkIfGlobalBest(aClimberBestScore, aClimberBestSolution))
+			logTime("Thread:", iThread, "Score:", aClimberBestScore, "Tolerance:", aCurrentTolerance, aClimberBestSolution);
+
 		while (aCounterUntilReset) {
 			RatedScore aLoopBestScore;
 			{
@@ -212,7 +214,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				if (aVerbose)
 					logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear);
 
-				if (checkIfLocalBest(aLoopBestScore, aClear, iThread, aCurrentTolerance, aClimberBestScore, aClimberBestSolution))
+				if (checkIfLocalBest(aLoopBestScore, aClear, aClimberBestScore, aClimberBestSolution, iThread, aCurrentTolerance))
 					 aCounterUntilReset=iMaxIter;
 			}
 
@@ -229,23 +231,23 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 					for (std::unordered_map<std::string, unsigned long long>::const_iterator aMappedLetter=aAlphabet.begin(); aMappedLetter!=aAlphabet.end(); ++aMappedLetter) {
 						if (aMappedLetter->first.at(0)!=aBefore) {
 							aMappedSymbol->second=aMappedLetter->first.at(0);
-							std::string aClear=buildClear(iCipherString, aSymbolMap);
+							std::string aCandidateSolution=buildClear(iCipherString, aSymbolMap);
 
-							RatedScore aCurrentScore(Score(iNorms, aClear), aGlobalScoreStatistics);
+							RatedScore aCandidateScore(Score(iNorms, aCandidateSolution), aGlobalScoreStatistics);
 							long double aTolerance=aCurrentTolerance*aDoubleDistribution(aGenerator);
 
-							if (aCurrentScore.value()*(1.0-aTolerance)>aLastScore.value()) {
-								if (aCurrentScore<aLastScore)
+							if (aCandidateScore.value()*(1.0-aTolerance)>aLastScore.value()) {
+								if (aCandidateScore<aLastScore)
 									aTolerated++;
 
-								aLastScore=aCurrentScore;
+								aLastScore=aCandidateScore;
 								aBestChoiceSoFar=aMappedLetter->first.at(0);
 
-								if (aCurrentScore>aLoopBestScore) {
-									aLoopBestScore=aCurrentScore;
+								if (aCandidateScore>aLoopBestScore) {
+									aLoopBestScore=aCandidateScore;
 									aLoopImproved=true;
 
-									if (checkIfLocalBest(aLoopBestScore, aClear, iThread, aCurrentTolerance, aClimberBestScore, aClimberBestSolution))
+									if (checkIfLocalBest(aLoopBestScore, aCandidateSolution, aClimberBestScore, aClimberBestSolution, iThread, aCurrentTolerance))
 										 aCounterUntilReset=iMaxIter;
 								}
 							}
