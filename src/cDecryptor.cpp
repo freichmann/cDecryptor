@@ -26,42 +26,42 @@ RatedScore aGlobalBestScore;
 std::string aGlobalBestSolution;
 std::unordered_map<unsigned long long, GaussianNorm> aGlobalScoreStatistics;
 
-void readCipher(const std::string& aCipherfile, std::string& iCipher) {
-	std::ifstream myfile(aCipherfile);
-	if (myfile.is_open()) {
-		while (!myfile.eof()) {
+void readCipher(const std::string& iCipherFilename, std::string& iCipher) {
+	std::ifstream aFile(iCipherFilename);
+	if (aFile.is_open()) {
+		while (!aFile.eof()) {
 			std::string aLine;
-			myfile >> aLine;
+			aFile >> aLine;
 			iCipher += aLine;
 		}
-		myfile.close();
+		aFile.close();
 	}
 }
 
-void readNorms(std::list<std::string> afiles, std::unordered_map<unsigned long long, NGram*>& aNorms) {
-	for (std::list<std::string>::iterator i = afiles.begin(); i != afiles.end(); ++i) {
+void readNorms(std::list<std::string> iFileNames, std::unordered_map<unsigned long long, NGram*>& iNorms) {
+	for (std::list<std::string>::iterator i = iFileNames.begin(); i != iFileNames.end(); ++i) {
 		std::cout << "Reading norm file " << *i << std::endl;
-		std::ifstream myfile(*i);
-		if (myfile.is_open()) {
-			while (!myfile.eof()) {
+		std::ifstream aFile(*i);
+		if (aFile.is_open()) {
+			while (!aFile.eof()) {
 				std::string aString;
-				myfile >> aString;
+				aFile >> aString;
 				transform(aString.begin(), aString.end(), aString.begin(), ::tolower);
 				unsigned long long aCount;
-				myfile >> aCount;
+				aFile >> aCount;
 				if (aString.length() > 0 && aCount > 0) {
-					std::unordered_map<unsigned long long, NGram*>::iterator i=aNorms.find(aString.length());
+					std::unordered_map<unsigned long long, NGram*>::iterator i=iNorms.find(aString.length());
 					NGram* aNorm;
-					if (i == aNorms.end()) {
+					if (i == iNorms.end()) {
 						aNorm = new NGram(aString.length());
-						aNorms.insert(std::pair<unsigned long long, NGram*>(aString.length(), aNorm));
+						iNorms.insert(std::pair<unsigned long long, NGram*>(aString.length(), aNorm));
 					} else
 						aNorm = (*i).second;
 
 					aNorm->add(aCount, aString);
 				}
 			}
-			myfile.close();
+			aFile.close();
 		} else
 			std::cout << "Failed to open file" << (*i) << std::endl;
 	}
@@ -154,17 +154,17 @@ void log() {
 };
 
 template<typename T, typename ... Args>
-void log(T first, Args ... args) {
+void log(T first, Args ... iArgs) {
 	std::cout << first << " ";
-	log(args ...);
+	log(iArgs ...);
 }
 
 template<typename ... Args>
-void logTime(Args ... args) {
-	time_t now_c = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+void logTime(Args ... iArgs) {
+	time_t aNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	Lock aLock(aGlobalOutputMutex);
-	std::cout << std::put_time(std::localtime(&now_c), "%c") << " ";
-	log(args ...);
+	std::cout << std::put_time(std::localtime(&aNow), "%c") << " ";
+	log(iArgs ...);
 }
 
 bool checkIfLocalBest(const RatedScore& iCandidateScore, const std::string& iCandidateSolution,
@@ -283,9 +283,9 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 	}
 }
 
-void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& aNorms) {
+void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& iNorms) {
 	long double aLnPerfect = 0.0;
-	for (std::unordered_map<unsigned long long, NGram*>::iterator i=aNorms.begin(); i != aNorms.end(); ++i) {
+	for (std::unordered_map<unsigned long long, NGram*>::iterator i=iNorms.begin(); i != iNorms.end(); ++i) {
 		long double aLnNGramPerfect = -logl(sqrtl(2.0 * M_PI) * aGlobalScoreStatistics.at(i->first)._sigma);
 		std::cout << setiosflags(std::ios::fixed) << std::setprecision(6)
 		<< "NGram length:" << i->second->_length << " NGrams:"
@@ -298,7 +298,7 @@ void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& aNor
 	std::cout << "Best possible score: " << aLnPerfect << std::endl;
 }
 
-void signalHandler( int iSigNum ) {
+void signalHandler(int iSigNum) {
 	std::cout << "Interrupt signal " << iSigNum << " received. Exiting." << std::endl;
 	exit(iSigNum);
 }
