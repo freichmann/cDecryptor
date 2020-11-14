@@ -17,6 +17,7 @@
 #include "NGram.h"
 #include "Lock.h"
 #include "RatedScore.h"
+#include "Options.h"
 
 //Globals
 std::mutex aBestScoreMutex;
@@ -24,7 +25,6 @@ std::mutex aOutputMutex;
 RatedScore aGlobalBestScore;
 std::string aGlobalBestSolution;
 std::unordered_map<unsigned long long, GaussianNorm> aGlobalScoreStatistics;
-bool aVerbose=false;
 
 void readCipher(const std::string& aCipherfile, std::string& iCipher) {
 	std::ifstream myfile(aCipherfile);
@@ -183,20 +183,19 @@ bool checkIfLocalBest(const RatedScore& iCandidateScore, const std::string& iCan
 		return false;
 }
 
-void hillclimber(const unsigned long long& iThread, const std::unordered_map<unsigned long long, NGram*>& iNorms, const std::string& iCipherString, const std::string &iSeedString, const long double& iRandomFraction, const long double& iMaxIter, const long double& iFuzzy) {
+void hillclimber(const unsigned long long& iThread, const std::unordered_map<unsigned long long, NGram*>& iNorms, const std::string& iCipherString, const Options& iOptions) {
 	std::unordered_map<char, char> aSymbolMap;
 	std::default_random_engine aGenerator;
 	aGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
 	std::uniform_int_distribution<unsigned int> aIntDistribution(0, iCipherString.length());
 	std::uniform_real_distribution<long double> aDoubleDistribution(0, 1.0);
-
-	unsigned long long aCounterUntilReset=iMaxIter;
+	unsigned long long aCounterUntilReset=iOptions._maxiter;
 	long double aCurrentTolerance=0.02;
 
 	randomMapInit(iCipherString, aSymbolMap);
 
 	if (iThread==0)
-		insertSymbols(iCipherString, aSymbolMap, iSeedString, 0);
+		insertSymbols(iCipherString, aSymbolMap, iOptions._seed, 0);
 
 	while (true) {
 		std::string aClimberBestSolution=buildClear(iCipherString, aSymbolMap);
@@ -211,11 +210,11 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				std::string aClear=buildClear(iCipherString, aSymbolMap);
 				aLoopBestScore=RatedScore(Score(iNorms, aClear), aGlobalScoreStatistics);
 
-				if (aVerbose)
+				if (iOptions._verbose)
 					logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear);
 
 				if (checkIfLocalBest(aLoopBestScore, aClear, aClimberBestScore, aClimberBestSolution, iThread, aCurrentTolerance))
-					 aCounterUntilReset=iMaxIter;
+					aCounterUntilReset=iOptions._maxiter;
 			}
 
 			bool aLoopImproved;
@@ -248,7 +247,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 									aLoopImproved=true;
 
 									if (checkIfLocalBest(aLoopBestScore, aCandidateSolution, aClimberBestScore, aClimberBestSolution, iThread, aCurrentTolerance))
-										 aCounterUntilReset=iMaxIter;
+										aCounterUntilReset=iOptions._maxiter;
 								}
 							}
 						}
@@ -256,7 +255,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 					aMappedSymbol->second=aBestChoiceSoFar;
 				}
 
-				if (aTolerated>iFuzzy*iCipherString.length())
+				if (aTolerated>iOptions._fuzzy*iCipherString.length())
 					aCurrentTolerance*=0.95;
 				else {
 					aCurrentTolerance*=1.05;
@@ -265,22 +264,22 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				}
 			} while (aLoopImproved);
 
-			if (aVerbose) {
+			if (iOptions._verbose) {
 				std::string aClear=buildClear(iCipherString, aSymbolMap);
 				aLoopBestScore=RatedScore(Score(iNorms, aClear), aGlobalScoreStatistics);
 
 				logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear);
 			}
 
-			if (iRandomFraction>0) {
+			if (iOptions._random>0) {
 				insertSymbols(iCipherString, aSymbolMap, aClimberBestSolution, 0);
-				partiallyShuffleMap(aSymbolMap, iRandomFraction);
+				partiallyShuffleMap(aSymbolMap, iOptions._random);
 			}
 
 			aCounterUntilReset--;
 		}
 		randomMapInit(iCipherString, aSymbolMap);
-		aCounterUntilReset=iMaxIter;
+		aCounterUntilReset=iOptions._maxiter;
 	}
 }
 
@@ -304,88 +303,90 @@ void signalHandler( int iSigNum ) {
 	exit(iSigNum);
 }
 
-int main(int argc, char* argv[]) {
-	std::list<std::string> aNGramsFiles;
-	std::string aCipherFile;
-	std::string aTextFile;
-	std::string aSeed="";
-	unsigned int aMaxIter=250;
-	unsigned int aThreadsCount=1;
-	long double aRandom=0.1;
-	long double aFuzzy=0.015;
+void parseOptions(int argc, char *argv[], Options &oOptions) {
+	int c;
+	while ((c = getopt(argc, argv, "l:c:t:f:s:w:r:x:v")) != -1) {
+		switch (c) {
+		case 'c':
+			if (optarg)
+				oOptions._cipherfile = optarg;
 
-	std::cout << "cDecryptor Version 10.11.2020 18:22" << std::endl;
-	signal(SIGINT, signalHandler);
+			break;
+		case 'f':
+			if (optarg)
+				oOptions._fuzzy = std::stold(optarg);
 
-	{
-		int c;
-		while( ( c = getopt(argc, argv, "l:c:t:f:s:w:r:x:v") ) != -1 ) {
-			switch(c) {
-			case 'c':
-				if(optarg)
-					aCipherFile=optarg;
-				break;
-			case 'f':
-				if(optarg)
-					aFuzzy=std::stold(optarg);
-				break;
-			case 'l':
-				if(optarg)
-					aNGramsFiles.push_back(optarg);
-				break;
-			case 'r':
-				if(optarg)
-					aRandom=std::stold(optarg);
-				break;
-			case 's':
-				if(optarg)
-					aSeed=optarg;
-				break;
-			case 't':
-				if(optarg)
-					aThreadsCount=atoi(optarg);
-				break;
-			case 'v':
-				aVerbose=true;
-				break;
-			case 'w':
-				if(optarg)
-					aTextFile=optarg;
-				break;
-			case 'x':
-				if(optarg)
-					aMaxIter=atoi(optarg);
-				break;
-			}
+			break;
+		case 'l':
+			if (optarg)
+				oOptions._ngramsfiles.push_back(optarg);
+
+			break;
+		case 'r':
+			if (optarg)
+				oOptions._random = std::stold(optarg);
+
+			break;
+		case 's':
+			if (optarg)
+				oOptions._seed = optarg;
+
+			break;
+		case 't':
+			if (optarg)
+				oOptions._threadscount = atoi(optarg);
+
+			break;
+		case 'v':
+			oOptions._verbose = true;
+			break;
+		case 'w':
+			if (optarg)
+				oOptions._textfile = optarg;
+
+			break;
+		case 'x':
+			if (optarg)
+				oOptions._maxiter = atoi(optarg);
+
+			break;
 		}
 	}
+}
+
+int main(int argc, char* argv[]) {
+	std::cout << "cDecryptor Version 14.11.2020 18:55" << std::endl;
+	signal(SIGINT, signalHandler);
+
+	Options aOptions;
+	parseOptions(argc, argv, aOptions);
 
 	std::string aCipherString;
-	readCipher(aCipherFile, aCipherString);
+	readCipher(aOptions._cipherfile, aCipherString);
 
 	std::cout << "Cipher: " << aCipherString << std::endl;
 	std::cout << "Cipher length: " << aCipherString.length() << std::endl;
-	std::cout << "Randomize fraction: " << aRandom << std::endl;
-	std::cout << "Random re-initialization after " << aMaxIter << " iterations" << std::endl;
-	std::cout << "Tolerance factor: " << aFuzzy << std::endl;
-	std::cout << "Parallel threads: " << aThreadsCount << std::endl;
+	std::cout << "Randomize fraction: " << aOptions._random << std::endl;
+	std::cout << "Random re-initialization after " << aOptions._maxiter << " iterations" << std::endl;
+	std::cout << "Tolerance factor: " << aOptions._fuzzy << std::endl;
+	std::cout << "Parallel threads: " << aOptions._threadscount << std::endl;
 
 	std::unordered_map<unsigned long long, NGram*> aNorms;
-	readNorms(aNGramsFiles, aNorms);
+	readNorms(aOptions._ngramsfiles, aNorms);
 
-	computeScoreStatistics(aTextFile, aNorms, aCipherString);
+	computeScoreStatistics(aOptions._textfile, aNorms, aCipherString);
 	printBestPossibleScore(aNorms);
 
-	if (aSeed.length()>0)
-		std::cout << "Seed: " << RatedScore(Score(aNorms, aSeed), aGlobalScoreStatistics) << " " << aSeed << std::endl;
+	if (aOptions._seed.length()>0)
+		std::cout << "Seed: " << RatedScore(Score(aNorms, aOptions._seed), aGlobalScoreStatistics) << " " << aOptions._seed << std::endl;
 
 	aGlobalBestScore=RatedScore(Score(aNorms, std::string(aCipherString.length(), '.')), aGlobalScoreStatistics);
 
-	std::vector<std::thread> aThreads[aThreadsCount];
-	for (unsigned long long aThread=0; aThread<aThreadsCount; aThread++)
-		aThreads->push_back(std::thread(&hillclimber, aThread, aNorms, aCipherString, aSeed, aRandom, aMaxIter, aFuzzy));
+	std::vector<std::thread> aThreads[aOptions._threadscount];
+	for (unsigned long long aThread=0; aThread<aOptions._threadscount; aThread++)
+		aThreads->push_back(std::thread(&hillclimber, aThread, aNorms, aCipherString, aOptions));
 
-	logTime(aThreadsCount, "threads started.");
+	logTime(aOptions._threadscount, "threads started.");
 
 	for (std::vector<std::thread>::iterator i=aThreads->begin(); i!=aThreads->end(); ++i)
 		(*i).join();
