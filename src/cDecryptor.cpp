@@ -20,8 +20,8 @@
 #include "Options.h"
 
 //Globals
-std::mutex aBestScoreMutex;
-std::mutex aOutputMutex;
+std::mutex aGlobalBestScoreMutex;
+std::mutex aGlobalOutputMutex;
 RatedScore aGlobalBestScore;
 std::string aGlobalBestSolution;
 std::unordered_map<unsigned long long, GaussianNorm> aGlobalScoreStatistics;
@@ -106,7 +106,7 @@ void insertSymbols(const std::string& iCipherString, std::unordered_map<char, ch
 }
 
 bool checkIfGlobalBest(const RatedScore& iRatedScore, const std::string& iClear) {
-	Lock aLock(aBestScoreMutex);
+	Lock aLock(aGlobalBestScoreMutex);
 	if (iRatedScore>aGlobalBestScore) {
 		aGlobalBestScore=iRatedScore;
 		aGlobalBestSolution=std::string(iClear);
@@ -162,7 +162,7 @@ void log(T first, Args ... args) {
 template<typename ... Args>
 void logTime(Args ... args) {
 	time_t now_c = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-	Lock aLock(aOutputMutex);
+	Lock aLock(aGlobalOutputMutex);
 	std::cout << std::put_time(std::localtime(&now_c), "%c") << " ";
 	log(args ...);
 }
