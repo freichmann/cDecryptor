@@ -38,7 +38,7 @@ void readCipher(const std::string& iCipherFilename, std::string& iCipher) {
 	}
 }
 
-void readNorms(std::list<std::string> iFileNames, std::unordered_map<unsigned long long, NGram*>& iNorms) {
+void readNorms(std::list<std::string>& iFileNames, std::unordered_map<unsigned long long, NGram*>& iNorms) {
 	for (std::list<std::string>::iterator i = iFileNames.begin(); i != iFileNames.end(); ++i) {
 		std::cout << "Reading norm file " << *i << std::endl;
 		std::ifstream aFile(*i);
@@ -298,15 +298,15 @@ void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& iNor
 	std::cout << "Best possible score: " << aLnPerfect << std::endl;
 }
 
-void signalHandler(int iSigNum) {
+void signalHandler(const int iSigNum) {
 	std::cout << "Interrupt signal " << iSigNum << " received. Exiting." << std::endl;
 	exit(iSigNum);
 }
 
-void parseOptions(int argc, char *argv[], Options &oOptions) {
-	int c;
-	while ((c = getopt(argc, argv, "l:c:t:f:s:w:r:x:v")) != -1) {
-		switch (c) {
+void parseOptions(const int iArgc, char* iArgv[], Options& oOptions) {
+	int aInt;
+	while ((aInt = getopt(iArgc, iArgv, "l:c:t:f:s:w:r:x:v")) != -1) {
+		switch (aInt) {
 		case 'c':
 			if (optarg)
 				oOptions._cipherfile = optarg;
@@ -354,12 +354,12 @@ void parseOptions(int argc, char *argv[], Options &oOptions) {
 	}
 }
 
-int main(int argc, char* argv[]) {
-	std::cout << "cDecryptor Version 14.11.2020 18:55" << std::endl;
+int main(int iArgc, char* iArgv[]) {
+	std::cout << "cDecryptor Version 14.11.2020 19:13" << std::endl;
 	signal(SIGINT, signalHandler);
 
 	Options aOptions;
-	parseOptions(argc, argv, aOptions);
+	parseOptions(iArgc, iArgv, aOptions);
 
 	std::string aCipherString;
 	readCipher(aOptions._cipherfile, aCipherString);
