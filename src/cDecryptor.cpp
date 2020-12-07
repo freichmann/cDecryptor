@@ -236,14 +236,12 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				RatedScore aLastScore=aLoopBestScore;
 				unsigned int aTolerated=0;
 
-				std::unordered_map<std::string, unsigned long long> aAlphabet=iNorms.find(1)->second->_NGramMap;
 				for (std::unordered_map<char, unsigned int>::iterator aMappedSymbol=aSymbolMap.begin(); aMappedSymbol!=aSymbolMap.end(); ++aMappedSymbol) {
-					std::cout << "Mapped symbol " << aMappedSymbol->first << " " << aMappedSymbol->second << std::endl;
 					const unsigned int aBefore=aMappedSymbol->second;
-					char aBestChoiceSoFar=aLetterVec.at(aBefore);
-					for (std::unordered_map<std::string, unsigned long long>::const_iterator aMappedLetter=aAlphabet.begin(); aMappedLetter!=aAlphabet.end(); ++aMappedLetter) {
-						if (aMappedLetter->first.at(0)!=aLetterVec.at(aBefore)) {
-							aMappedSymbol->second=aMappedLetter->first.at(0);
+					char aBestChoiceSoFar=aBefore;
+					for (unsigned int i=0; i<aLetterVec.size(); i++) {
+						if (i!=aBefore) {
+							aMappedSymbol->second=i;
 							std::string aCandidateSolution=buildClear(iCipherString, aSymbolMap, aLetterVec, iOptions);
 
 							RatedScore aCandidateScore(Score(iNorms, aCandidateSolution), aGlobalScoreStatistics);
@@ -254,7 +252,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 									aTolerated++;
 
 								aLastScore=aCandidateScore;
-								aBestChoiceSoFar=aMappedLetter->first.at(0);
+								aBestChoiceSoFar=i;
 
 								if (aCandidateScore>aLoopBestScore) {
 									aLoopBestScore=aCandidateScore;
@@ -266,12 +264,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 							}
 						}
 					}
-					{
-						unsigned int i=aLetterVec.size();
-						while (aLetterVec.at(i)!=aBestChoiceSoFar && i>0)
-							i--;
-						aMappedSymbol->second=i;
-					}
+					aMappedSymbol->second=aBestChoiceSoFar;
 				}
 
 				if (aTolerated>iOptions._fuzzy*iCipherString.length())
@@ -307,11 +300,11 @@ void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& iNor
 	for (std::unordered_map<unsigned long long, NGram*>::iterator i=iNorms.begin(); i != iNorms.end(); ++i) {
 		long double aLnNGramPerfect = -logl(sqrtl(2.0 * M_PI) * aGlobalScoreStatistics.at(i->first)._sigma);
 		std::cout << setiosflags(std::ios::fixed) << std::setprecision(6)
-		<< "NGram length:" << i->second->_length << " NGrams:"
-		<< i->second->_NGramMap.size() << " Samples:"
-		<< i->second->_count << " Mean:" << aGlobalScoreStatistics.at(i->first)._mean
-		<< " StdDev:" << aGlobalScoreStatistics.at(i->first)._sigma << " Perfect: "
-		<< aLnNGramPerfect << std::endl;
+				<< "NGram length:" << i->second->_length << " NGrams:"
+				<< i->second->_NGramMap.size() << " Samples:"
+				<< i->second->_count << " Mean:" << aGlobalScoreStatistics.at(i->first)._mean
+				<< " StdDev:" << aGlobalScoreStatistics.at(i->first)._sigma << " Perfect: "
+				<< aLnNGramPerfect << std::endl;
 		aLnPerfect += aLnNGramPerfect;
 	}
 	std::cout << "Best possible score: " << aLnPerfect << std::endl;
