@@ -35,7 +35,8 @@ void readCipher(const std::string& iCipherFilename, std::string& iCipher) {
 			iCipher += aLine;
 		}
 		aFile.close();
-	}
+	} else
+		throw "Failed to open "+iCipherFilename;
 }
 
 void readNorms(std::list<std::string>& iFileNames, std::unordered_map<unsigned long long, NGram*>& iNorms) {
@@ -67,42 +68,51 @@ void readNorms(std::list<std::string>& iFileNames, std::unordered_map<unsigned l
 	}
 }
 
-void partiallyShuffleMap(std::unordered_map<char, char>& iUniqueSymbols, const long double &iRandom) {
+void partiallyShuffleMap(std::unordered_map<char, unsigned int>& iSymbolMap, const long double &iRandom) {
 	std::default_random_engine aGenerator;
 	aGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
-	std::uniform_int_distribution<unsigned int> aCharDistribution((unsigned int)'a', (unsigned int)'z');
+	std::uniform_int_distribution<unsigned int> aCharDistribution(0, (unsigned int)'z'-(unsigned int)'a');
 	std::uniform_real_distribution<long double> aDoubleDistribution(0,1);
 
-	for (std::unordered_map<char, char>::iterator i=iUniqueSymbols.begin(); i!=iUniqueSymbols.end(); ++i)
+	for (std::unordered_map<char, unsigned int>::iterator i=iSymbolMap.begin(); i!=iSymbolMap.end(); ++i)
 		if (aDoubleDistribution(aGenerator)<iRandom)
 			i->second=(char)(aCharDistribution(aGenerator));
 }
 
-void randomMapInit(const std::string& iCipher, std::unordered_map<char, char>& iSymbolMap) {
+void randomMapInit(const std::string& iCipher, std::unordered_map<char, unsigned int>& iSymbolMap, std::vector<char>& iLetterVec) {
 	std::default_random_engine aGenerator;
 	aGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
-	std::uniform_int_distribution<unsigned int> aCharDistribution((unsigned int)'a', (unsigned int)'z');
+	std::uniform_int_distribution<unsigned int> aIntDistribution(0, (unsigned int)'z'-(unsigned int)'a');
 
 	iSymbolMap.clear();
+	iLetterVec.clear();
 
 	std::unordered_set<char> aSymbols;
-	for (unsigned long long i = 0; i < iCipher.length(); i++)
+	for (unsigned long long i=0; i<iCipher.length(); i++)
 		aSymbols.insert(iCipher[i]);
 
 	for (std::unordered_set<char>::iterator i=aSymbols.begin(); i!=aSymbols.end(); ++i)
-		iSymbolMap.insert(std::pair<char, char>(*i, (char)(aCharDistribution(aGenerator))));
+		iSymbolMap.insert(std::pair<char, unsigned int>(*i, aIntDistribution(aGenerator)));
+
+	for (char c='a'; c<='z'; c++)
+		iLetterVec.push_back(c);
 }
 
-std::string buildClear(const std::string& iCipherString, std::unordered_map<char, char>& iSymbolMap) {
+std::string buildClear(const std::string& iCipherString, std::unordered_map<char, unsigned int>& iSymbolMap, std::vector<char>& iLetterVec, const Options& iOptions) {
 	std::string iClear;
 	for (unsigned int i=0; i<iCipherString.length(); i++)
-		iClear+=iSymbolMap.find(iCipherString[i])->second;
+		iClear+=iLetterVec.at(iSymbolMap.find(iCipherString[i])->second % (iOptions._diskSize>0?iOptions._diskSize:iLetterVec.size()));
 	return iClear;
 }
 
-void insertSymbols(const std::string& iCipherString, std::unordered_map<char, char>& iSymbolMap, const std::string& iLetters, const unsigned int iPos) {
-	for (unsigned int i=0; i<iLetters.length(); i++)
-		iSymbolMap.find(iCipherString[iPos+i])->second=iLetters.at(i);
+void insertSymbols(const std::string& iCipherString, std::unordered_map<char, unsigned int>& iSymbolMap, const std::vector<char>& iLetterVec, const std::string& iLetters, const unsigned int iPos) {
+	for (unsigned int i=0; i<iLetters.length(); i++) {
+		int j=iLetterVec.size()-1;
+		while (iLetterVec.at(j)!=iLetters.at(i) && j>=0)
+			j--;
+		if (j>=0)
+			iSymbolMap.find(iCipherString[iPos+i])->second=(unsigned int)j;
+	}
 }
 
 bool checkIfGlobalBest(const RatedScore& iRatedScore, const std::string& iClear) {
@@ -118,15 +128,17 @@ bool checkIfGlobalBest(const RatedScore& iRatedScore, const std::string& iClear)
 void computeScoreStatistics(const std::string& iTextFile, std::unordered_map<unsigned long long, NGram*>& ioNorms, const std::string& iCipherString) {
 	std::string aString;
 	std::ifstream aFile(iTextFile);
+
 	if (aFile.is_open())
 		while (!aFile.eof())
 			aFile >> aString;
 	else
-		throw "Can not open file";
+		throw "Can not open file " + iTextFile;
 
 	aFile.close();
 	std::vector<Score> aScores;
 	aGlobalScoreStatistics.clear();
+
 	for (std::unordered_map<unsigned long long, NGram*>::iterator i=ioNorms.begin(); i != ioNorms.end(); ++i) {
 		aScores.clear();
 		std::unordered_map<unsigned long long, NGram*> aSubNorm;
@@ -184,7 +196,8 @@ bool checkIfLocalBest(const RatedScore& iCandidateScore, const std::string& iCan
 }
 
 void hillclimber(const unsigned long long& iThread, const std::unordered_map<unsigned long long, NGram*>& iNorms, const std::string& iCipherString, const Options& iOptions) {
-	std::unordered_map<char, char> aSymbolMap;
+	std::unordered_map<char, unsigned int> aSymbolMap;
+	std::vector<char> aLetterVec;
 	std::default_random_engine aGenerator;
 	aGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
 	std::uniform_int_distribution<unsigned int> aIntDistribution(0, iCipherString.length());
@@ -192,13 +205,13 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 	unsigned long long aCounterUntilReset=iOptions._maxiter;
 	long double aCurrentTolerance=0.02;
 
-	randomMapInit(iCipherString, aSymbolMap);
+	randomMapInit(iCipherString, aSymbolMap, aLetterVec);
 
 	if (iThread==0)
-		insertSymbols(iCipherString, aSymbolMap, iOptions._seed, 0);
+		insertSymbols(iCipherString, aSymbolMap, aLetterVec, iOptions._seed, 0);
 
 	while (true) {
-		std::string aClimberBestSolution=buildClear(iCipherString, aSymbolMap);
+		std::string aClimberBestSolution=buildClear(iCipherString, aSymbolMap, aLetterVec, iOptions);
 		RatedScore aClimberBestScore(Score(iNorms, aClimberBestSolution), aGlobalScoreStatistics);
 
 		if (checkIfGlobalBest(aClimberBestScore, aClimberBestSolution))
@@ -207,7 +220,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 		while (aCounterUntilReset) {
 			RatedScore aLoopBestScore;
 			{
-				std::string aClear=buildClear(iCipherString, aSymbolMap);
+				std::string aClear=buildClear(iCipherString, aSymbolMap, aLetterVec, iOptions);
 				aLoopBestScore=RatedScore(Score(iNorms, aClear), aGlobalScoreStatistics);
 
 				if (iOptions._verbose)
@@ -224,13 +237,14 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				unsigned int aTolerated=0;
 
 				std::unordered_map<std::string, unsigned long long> aAlphabet=iNorms.find(1)->second->_NGramMap;
-				for (std::unordered_map<char, char>::iterator aMappedSymbol=aSymbolMap.begin(); aMappedSymbol!=aSymbolMap.end(); ++aMappedSymbol) {
-					const char aBefore=aMappedSymbol->second;
-					char aBestChoiceSoFar=aBefore;
+				for (std::unordered_map<char, unsigned int>::iterator aMappedSymbol=aSymbolMap.begin(); aMappedSymbol!=aSymbolMap.end(); ++aMappedSymbol) {
+					std::cout << "Mapped symbol " << aMappedSymbol->first << " " << aMappedSymbol->second << std::endl;
+					const unsigned int aBefore=aMappedSymbol->second;
+					char aBestChoiceSoFar=aLetterVec.at(aBefore);
 					for (std::unordered_map<std::string, unsigned long long>::const_iterator aMappedLetter=aAlphabet.begin(); aMappedLetter!=aAlphabet.end(); ++aMappedLetter) {
-						if (aMappedLetter->first.at(0)!=aBefore) {
+						if (aMappedLetter->first.at(0)!=aLetterVec.at(aBefore)) {
 							aMappedSymbol->second=aMappedLetter->first.at(0);
-							std::string aCandidateSolution=buildClear(iCipherString, aSymbolMap);
+							std::string aCandidateSolution=buildClear(iCipherString, aSymbolMap, aLetterVec, iOptions);
 
 							RatedScore aCandidateScore(Score(iNorms, aCandidateSolution), aGlobalScoreStatistics);
 							long double aTolerance=aCurrentTolerance*aDoubleDistribution(aGenerator);
@@ -252,7 +266,12 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 							}
 						}
 					}
-					aMappedSymbol->second=aBestChoiceSoFar;
+					{
+						unsigned int i=aLetterVec.size();
+						while (aLetterVec.at(i)!=aBestChoiceSoFar && i>0)
+							i--;
+						aMappedSymbol->second=i;
+					}
 				}
 
 				if (aTolerated>iOptions._fuzzy*iCipherString.length())
@@ -265,20 +284,20 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 			} while (aLoopImproved);
 
 			if (iOptions._verbose) {
-				std::string aClear=buildClear(iCipherString, aSymbolMap);
+				std::string aClear=buildClear(iCipherString, aSymbolMap, aLetterVec, iOptions);
 				aLoopBestScore=RatedScore(Score(iNorms, aClear), aGlobalScoreStatistics);
 
 				logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear);
 			}
 
 			if (iOptions._random>0) {
-				insertSymbols(iCipherString, aSymbolMap, aClimberBestSolution, 0);
+				insertSymbols(iCipherString, aSymbolMap, aLetterVec, aClimberBestSolution, 0);
 				partiallyShuffleMap(aSymbolMap, iOptions._random);
 			}
 
 			aCounterUntilReset--;
 		}
-		randomMapInit(iCipherString, aSymbolMap);
+		randomMapInit(iCipherString, aSymbolMap, aLetterVec);
 		aCounterUntilReset=iOptions._maxiter;
 	}
 }
@@ -305,37 +324,35 @@ void signalHandler(const int iSigNum) {
 
 void parseOptions(const int iArgc, char* iArgv[], Options& oOptions) {
 	int aInt;
-	while ((aInt = getopt(iArgc, iArgv, "l:c:t:f:s:w:r:x:v")) != -1) {
+	while ((aInt = getopt(iArgc, iArgv, "c:d:f:l:r:s:t:vw:x:")) != -1) {
 		switch (aInt) {
 		case 'c':
 			if (optarg)
 				oOptions._cipherfile = optarg;
-
+			break;
+		case 'd':
+			if (optarg)
+				oOptions._diskSize = atoi(optarg);
 			break;
 		case 'f':
 			if (optarg)
 				oOptions._fuzzy = std::stold(optarg);
-
 			break;
 		case 'l':
 			if (optarg)
 				oOptions._ngramsfiles.push_back(optarg);
-
 			break;
 		case 'r':
 			if (optarg)
 				oOptions._random = std::stold(optarg);
-
 			break;
 		case 's':
 			if (optarg)
 				oOptions._seed = optarg;
-
 			break;
 		case 't':
 			if (optarg)
 				oOptions._threadscount = atoi(optarg);
-
 			break;
 		case 'v':
 			oOptions._verbose = true;
@@ -343,56 +360,62 @@ void parseOptions(const int iArgc, char* iArgv[], Options& oOptions) {
 		case 'w':
 			if (optarg)
 				oOptions._textfile = optarg;
-
 			break;
 		case 'x':
 			if (optarg)
 				oOptions._maxiter = atoi(optarg);
-
 			break;
 		}
 	}
 }
 
 int main(int iArgc, char* iArgv[]) {
-	std::cout << "cDecryptor Version 14.11.2020 19:13" << std::endl;
-	signal(SIGINT, signalHandler);
+	try {
+		std::cout << "cDecryptor Version 7.12.2020 20:33" << std::endl;
+		signal(SIGINT, signalHandler);
 
-	Options aOptions;
-	parseOptions(iArgc, iArgv, aOptions);
+		Options aOptions;
+		parseOptions(iArgc, iArgv, aOptions);
 
-	std::string aCipherString;
-	readCipher(aOptions._cipherfile, aCipherString);
+		std::string aCipherString;
+		std::cout << "Reading cipher file " << aOptions._cipherfile << std::endl;
+		readCipher(aOptions._cipherfile, aCipherString);
 
-	std::cout << "Cipher: " << aCipherString << std::endl;
-	std::cout << "Cipher length: " << aCipherString.length() << std::endl;
-	std::cout << "Randomize fraction: " << aOptions._random << std::endl;
-	std::cout << "Random re-initialization after " << aOptions._maxiter << " iterations" << std::endl;
-	std::cout << "Tolerance factor: " << aOptions._fuzzy << std::endl;
-	std::cout << "Parallel threads: " << aOptions._threadscount << std::endl;
+		std::cout << "Cipher: " << aCipherString << std::endl;
+		std::cout << "Cipher length: " << aCipherString.length() << std::endl;
+		std::cout << "Randomize fraction: " << aOptions._random << std::endl;
+		std::cout << "Random re-initialization after " << aOptions._maxiter << " iterations" << std::endl;
+		std::cout << "Tolerance factor: " << aOptions._fuzzy << std::endl;
+		std::cout << "Parallel threads: " << aOptions._threadscount << std::endl;
 
-	std::unordered_map<unsigned long long, NGram*> aNorms;
-	readNorms(aOptions._ngramsfiles, aNorms);
+		std::unordered_map<unsigned long long, NGram*> aNorms;
+		readNorms(aOptions._ngramsfiles, aNorms);
 
-	computeScoreStatistics(aOptions._textfile, aNorms, aCipherString);
-	printBestPossibleScore(aNorms);
+		std::cout << "Analyzing sample text file: " << aOptions._textfile << std::endl;
+		computeScoreStatistics(aOptions._textfile, aNorms, aCipherString);
 
-	if (aOptions._seed.length()>0)
-		std::cout << "Seed: " << RatedScore(Score(aNorms, aOptions._seed), aGlobalScoreStatistics) << " " << aOptions._seed << std::endl;
+		printBestPossibleScore(aNorms);
 
-	aGlobalBestScore=RatedScore(Score(aNorms, std::string(aCipherString.length(), '.')), aGlobalScoreStatistics);
+		if (aOptions._seed.length()>0)
+			std::cout << "Seed: " << RatedScore(Score(aNorms, aOptions._seed), aGlobalScoreStatistics) << " " << aOptions._seed << std::endl;
 
-	std::vector<std::thread> aThreads[aOptions._threadscount];
-	for (unsigned long long aThread=0; aThread<aOptions._threadscount; aThread++)
-		aThreads->push_back(std::thread(&hillclimber, aThread, aNorms, aCipherString, aOptions));
+		aGlobalBestScore=RatedScore(Score(aNorms, std::string(aCipherString.length(), '.')), aGlobalScoreStatistics);
 
-	logTime(aOptions._threadscount, "threads started.");
+		std::vector<std::thread> aThreads[aOptions._threadscount];
 
-	for (std::vector<std::thread>::iterator i=aThreads->begin(); i!=aThreads->end(); ++i)
-		(*i).join();
+		for (unsigned long long aThread=0; aThread<aOptions._threadscount; aThread++)
+			aThreads->push_back(std::thread(&hillclimber, aThread, aNorms, aCipherString, aOptions));
 
-	for (std::unordered_map<unsigned long long, NGram*>::iterator aI=aNorms.begin(); aI!=aNorms.end(); ++aI)
-		delete aI->second;
+		logTime(aOptions._threadscount, "threads started.");
 
+		for (std::vector<std::thread>::iterator i=aThreads->begin(); i!=aThreads->end(); ++i)
+			(*i).join();
+
+		for (std::unordered_map<unsigned long long, NGram*>::iterator aI=aNorms.begin(); aI!=aNorms.end(); ++aI)
+			delete aI->second;
+	}
+	catch (std::string& iString) {
+		std::cerr << "Error caught: " << iString << std::endl;
+	}
 	return EXIT_SUCCESS;
 }

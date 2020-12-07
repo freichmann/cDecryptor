@@ -18,6 +18,7 @@ struct Options {
 	std::string _seed="";
 	unsigned int _maxiter=250;
 	unsigned int _threadscount=1;
+	unsigned int _diskSize=0;
 	long double _random=0.1;
 	long double _fuzzy=0.015;
 	bool _verbose=false;
