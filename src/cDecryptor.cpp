@@ -101,7 +101,10 @@ void randomMapInit(const std::string& iCipher, std::unordered_map<char, unsigned
 std::string buildClear(const std::string& iCipherString, std::unordered_map<char, unsigned int>& iSymbolMap, std::vector<char>& iLetterVec, const Options& iOptions) {
 	std::string iClear;
 	for (unsigned int i=0; i<iCipherString.length(); i++)
-		iClear+=iLetterVec.at(iSymbolMap.find(iCipherString[i])->second % (iOptions._diskSize>0?iOptions._diskSize:iLetterVec.size()));
+		if (iOptions._diskSize==0)
+			iClear+=iLetterVec.at(iSymbolMap.find(iCipherString[i])->second);
+		else
+			iClear+=iLetterVec.at((i+iSymbolMap.find(iCipherString[i])->second) % iOptions._diskSize);
 	return iClear;
 }
 
@@ -364,7 +367,7 @@ void parseOptions(const int iArgc, char* iArgv[], Options& oOptions) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 7.12.2020 20:33" << std::endl;
+		std::cout << "cDecryptor Version 7.12.2020 22:43" << std::endl;
 		signal(SIGINT, signalHandler);
 
 		Options aOptions;
