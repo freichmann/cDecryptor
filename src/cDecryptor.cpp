@@ -240,8 +240,6 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 	if (iThread==0)
 		insertSymbols(aCandidateMap, 0, iCipherString, aCandidateLetterVector, iOptions);
 
-	std::cout << "After init: " <<  buildClear(iCipherString, aCandidateMap, aCandidateLetterVector, iOptions) << std::endl;
-
 	while (true) {
 		std::string aClimberBestString=buildClear(iCipherString, aCandidateMap, aCandidateLetterVector, iOptions);
 		RatedScore aClimberBestScore(Score(iNorms, aClimberBestString), aGlobalScoreStatistics);
