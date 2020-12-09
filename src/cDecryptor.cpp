@@ -211,6 +211,14 @@ void logTime(Args ... iArgs) {
 	log(iArgs ...);
 }
 
+std::string concat(const std::vector<char>& iCandidateLetterVector) {
+	std::string aChiffreDisk;
+	for (std::vector<char>::const_iterator i = iCandidateLetterVector.begin();
+			i != iCandidateLetterVector.end(); ++i)
+		aChiffreDisk += (*i);
+	return aChiffreDisk;
+}
+
 bool printIfClimberBest(const RatedScore& iCandidateScore, const std::string& iCandidateSolution, RatedScore& ioPreviousBestScore, const unsigned long long& iThread, long double& iCurrentTolerance, const std::vector<char>& iCandidateLetterVector, const Options& iOptions) {
 	if (iCandidateScore>ioPreviousBestScore) {
 		ioPreviousBestScore = iCandidateScore;
@@ -219,9 +227,7 @@ bool printIfClimberBest(const RatedScore& iCandidateScore, const std::string& iC
 			if (iOptions._diskSize==0)
 				logTime("Thread:", iThread, "Score:", iCandidateScore, "Tolerance:", iCurrentTolerance, "Clear:", iCandidateSolution);
 			else {
-				std::string aChiffreDisk;
-				for (std::vector<char>::const_iterator i=iCandidateLetterVector.begin(); i!=iCandidateLetterVector.end(); ++i)
-					aChiffreDisk+=(*i);
+				std::string aChiffreDisk = concat(iCandidateLetterVector);
 				logTime("Thread:", iThread, "Score:", iCandidateScore, "Tolerance:", iCurrentTolerance, "Clear:", iCandidateSolution, "Chiffredisk:", aChiffreDisk);
 			}
 		}
@@ -349,7 +355,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				std::string aClear=buildClear(iCipherString, aCandidateMap, aCandidateLetterVector, iOptions);
 				aLoopBestScore=RatedScore(Score(iNorms, aClear), aGlobalScoreStatistics);
 
-				logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear);
+				logTime("DEBUG Thread:", iThread, "Give Up", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear, concat(aCandidateLetterVector));
 			}
 
 			if (iOptions._random>0) {
