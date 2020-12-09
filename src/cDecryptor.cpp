@@ -286,7 +286,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				aLoopBestScore=RatedScore(Score(iNorms, aCandidateString), aGlobalScoreStatistics);
 
 				if (iOptions._verbose)
-					logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aCandidateString);
+					logTime("DEBUG Thread:", iThread, "Restart", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aCandidateString, concat(aCandidateLetterVector));
 			}
 
 			bool aSymbolsImproved;
@@ -441,7 +441,7 @@ void parseOptions(const int iArgc, char* iArgv[], Options& oOptions) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 9.12.2020 17:20" << std::endl;
+		std::cout << "cDecryptor Version 9.12.2020 20:20" << std::endl;
 		signal(SIGINT, signalHandler);
 
 		Options aOptions;
