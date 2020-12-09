@@ -79,6 +79,18 @@ void partiallyShuffleMap(std::unordered_map<char, unsigned int>& iSymbolMap, con
 			i->second=(char)(aCharDistribution(aGenerator));
 }
 
+void partiallyShuffleLetters(std::vector<char>& iVector, const long double &iRandom) {
+	std::default_random_engine aGenerator;
+	aGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+	std::uniform_int_distribution<unsigned int> aCharDistribution(0, iVector.size());
+	std::uniform_real_distribution<long double> aDoubleDistribution(0,1);
+
+	for (std::vector<char>::iterator aFrom=iVector.begin(); aFrom!=iVector.end(); ++aFrom)
+		for (std::vector<char>::iterator aTo=iVector.begin(); aTo!=iVector.end(); ++aTo)
+			if (aDoubleDistribution(aGenerator)<iRandom)
+				std::iter_swap(aFrom, aTo);
+}
+
 void randomMapInit(const std::string& iCipher, std::unordered_map<char, unsigned int>& iSymbolMap, std::vector<char>& iLetterVec) {
 	std::default_random_engine aGenerator;
 
@@ -344,6 +356,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				aCandidateMap=aClimberBestMap;
 				aCandidateLetterVector=aClimberBestLetterVector;
 				partiallyShuffleMap(aCandidateMap, iOptions._random);
+				partiallyShuffleLetters(aCandidateLetterVector, iOptions._random);
 			}
 
 			aCounterUntilReset--;
