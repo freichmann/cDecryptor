@@ -445,6 +445,35 @@ void parseOptions(const int iArgc, char* iArgv[], Options& oOptions) {
 	}
 }
 
+std::string transpose(const std::string& iCipherString, const std::string& iFileName) {
+	std::cout << "Reading transposition file: " << iFileName
+			<< std::endl;
+	std::string aTransposition;
+	std::ifstream aFile(iFileName);
+	std::string aTransposed;
+
+	if (aFile.is_open()) {
+		while (!aFile.eof()) {
+			std::string aLine;
+			aFile >> aLine;
+			aTransposition += aLine;
+		}
+		aFile.close();
+		std::cout << "Applying transposition " << aTransposition << std::endl;
+		std::vector<unsigned int> aVector;
+		std::stringstream aStringStream(aTransposition);
+		for (int i; aStringStream >> i;) {
+			aVector.push_back(i);
+			if (aStringStream.peek() == ',')
+				aStringStream.ignore();
+		}
+		for (std::size_t i = 0; i < aVector.size(); i++)
+			aTransposed += iCipherString.at(aVector.at(i));
+	} else
+		throw "Failed to open " + iFileName;
+	return aTransposed;
+}
+
 int main(int iArgc, char* iArgv[]) {
 	try {
 		std::cout << "cDecryptor Version 12.12.2020 14:44" << std::endl;
@@ -461,33 +490,10 @@ int main(int iArgc, char* iArgv[]) {
 		std::cout << "Cipher length: " << aCipherString.length() << std::endl;
 
 		if (aOptions._transpositionfile.length()>0) {
-			std::cout << "Reading transposition file: " << aOptions._transpositionfile << std::endl;
-
-			std::string aTransposition;
-			std::ifstream aFile(aOptions._transpositionfile);
-			if (aFile.is_open()) {
-				while (!aFile.eof()) {
-					std::string aLine;
-					aFile >> aLine;
-					aTransposition += aLine;
-				}
-				aFile.close();
-
-			    std::vector<int> vect;
-
-			    std::stringstream ss(aTransposition);
-
-			    for (int i; ss >> i;) {
-			        vect.push_back(i);
-			        if (ss.peek() == ',')
-			            ss.ignore();
-			    }
-
-			    for (std::size_t i = 0; i < vect.size(); i++)
-			        std::cout << vect[i] << std::endl;
-			} else
-				throw "Failed to open "+aOptions._transpositionfile;
+			aCipherString=transpose(aCipherString, aOptions._transpositionfile);
+			std::cout << "After transposition: " << aCipherString << std::endl;
 		}
+
 
 		std::cout << "Randomize fraction: " << aOptions._random << std::endl;
 		std::cout << "Random re-initialization after " << aOptions._maxiter << " iterations" << std::endl;
