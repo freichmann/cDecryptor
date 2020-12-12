@@ -280,7 +280,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 			logTime("Thread:", iThread, "Score:", aClimberBestScore, "Tolerance:", aCurrentTolerance, aClimberBestString);
 		}
 
-		while (aCounterUntilReset) {
+		while (aCounterUntilReset && iOptions._random>0) {
 			RatedScore aLoopBestScore;
 			{
 				std::string aCandidateString=buildClear(iCipherString, aCandidateMap, aCandidateLetterVector, iOptions);
