@@ -15,6 +15,7 @@ struct Options {
 	std::list<std::string> _ngramsfiles;
 	std::string _cipherfile;
 	std::string _textfile;
+	std::string _transpositionfile="";
 	std::string _seed="";
 	unsigned int _maxiter=250;
 	unsigned int _threadscount=1;

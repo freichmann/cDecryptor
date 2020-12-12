@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
+#include <sstream>
 
 #include "NGram.h"
 #include "Lock.h"
@@ -362,7 +363,8 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				aCandidateMap=aClimberBestMap;
 				aCandidateLetterVector=aClimberBestLetterVector;
 				partiallyShuffleMap(aCandidateMap, iOptions._random);
-				partiallyShuffleLetters(aCandidateLetterVector, iOptions._random);
+				if (iOptions._diskSize>0)
+					partiallyShuffleLetters(aCandidateLetterVector, iOptions._random);
 			}
 
 			aCounterUntilReset--;
@@ -394,7 +396,7 @@ void signalHandler(const int iSigNum) {
 
 void parseOptions(const int iArgc, char* iArgv[], Options& oOptions) {
 	int aInt;
-	while ((aInt = getopt(iArgc, iArgv, "c:d:f:l:r:s:t:vw:x:")) != -1) {
+	while ((aInt = getopt(iArgc, iArgv, "c:d:f:l:p:r:s:t:vw:x:z:")) != -1) {
 		switch (aInt) {
 		case 'c':
 			if (optarg)
@@ -435,13 +437,17 @@ void parseOptions(const int iArgc, char* iArgv[], Options& oOptions) {
 			if (optarg)
 				oOptions._maxiter = atoi(optarg);
 			break;
+		case 'z':
+			if (optarg)
+				oOptions._transpositionfile = optarg;
+			break;
 		}
 	}
 }
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 9.12.2020 20:20" << std::endl;
+		std::cout << "cDecryptor Version 12.12.2020 14:44" << std::endl;
 		signal(SIGINT, signalHandler);
 
 		Options aOptions;
@@ -453,6 +459,36 @@ int main(int iArgc, char* iArgv[]) {
 
 		std::cout << "Cipher: " << aCipherString << std::endl;
 		std::cout << "Cipher length: " << aCipherString.length() << std::endl;
+
+		if (aOptions._transpositionfile.length()>0) {
+			std::cout << "Reading transposition file: " << aOptions._transpositionfile << std::endl;
+
+			std::string aTransposition;
+			std::ifstream aFile(aOptions._transpositionfile);
+			if (aFile.is_open()) {
+				while (!aFile.eof()) {
+					std::string aLine;
+					aFile >> aLine;
+					aTransposition += aLine;
+				}
+				aFile.close();
+
+			    std::vector<int> vect;
+
+			    std::stringstream ss(aTransposition);
+
+			    for (int i; ss >> i;) {
+			        vect.push_back(i);
+			        if (ss.peek() == ',')
+			            ss.ignore();
+			    }
+
+			    for (std::size_t i = 0; i < vect.size(); i++)
+			        std::cout << vect[i] << std::endl;
+			} else
+				throw "Failed to open "+aOptions._transpositionfile;
+		}
+
 		std::cout << "Randomize fraction: " << aOptions._random << std::endl;
 		std::cout << "Random re-initialization after " << aOptions._maxiter << " iterations" << std::endl;
 		std::cout << "Tolerance factor: " << aOptions._fuzzy << std::endl;
