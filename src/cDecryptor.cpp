@@ -488,7 +488,7 @@ std::string transpose(const std::string& iCipherString, const std::string& iFile
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 12.12.2020 23:37" << std::endl;
+		std::cout << "cDecryptor Version 13.12.2020 18:51" << std::endl;
 		signal(SIGINT, signalHandler);
 
 		Options aOptions;
