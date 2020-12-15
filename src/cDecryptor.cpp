@@ -129,7 +129,7 @@ std::string buildClear(const std::string& iCipherString, std::unordered_map<char
 
 void insertSymbols(std::unordered_map<char,unsigned int>& iSymbolMap, const std::string& iCipherString, std::vector<char>& iLetterVec, const Options& iOptions) {
 	std::vector<char> aChars;
-	for (unsigned int i=0; i<iOptions._seed.length(); i++) {
+	for (unsigned int i=0; i<std::min(iOptions._seed.length(), iCipherString.length()); i++) {
 		std::vector<char>::iterator aIndex = std::find(aChars.begin(), aChars.end(), iOptions._seed.at(i));
 		if (aIndex == aChars.end()) {
 			aChars.push_back(iOptions._seed.at(i));
@@ -296,8 +296,8 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 					logTime("DEBUG Thread:", iThread, "Start", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aCandidateString, concat(aCandidateVector));
 			}
 
-			bool aSymbolsImproved;
-			bool aVectorImproved;
+			bool aSymbolsChanged;
+			bool aVectorChanged;
 			do {
 				{
 					std::string aCandidateString=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
@@ -311,8 +311,8 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				RatedScore aLastScore=aLoopBestScore;
 				unsigned int aTolerated=0;
 
-				aSymbolsImproved=false;
-				aVectorImproved=false;
+				aSymbolsChanged=false;
+				aVectorChanged=false;
 				for (std::unordered_map<char, unsigned int>::iterator aMappedSymbol=aCandidateMap.begin(); aMappedSymbol!=aCandidateMap.end(); ++aMappedSymbol) {
 					const unsigned int aBefore=aMappedSymbol->second;
 					unsigned int aBestSymbolSoFar=aBefore;
@@ -324,17 +324,17 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 
 							if (considerCandidate(aLoopBestScore, aTolerated, aCandidateScore, aCurrentTolerance, aLastScore, aDoubleDistribution(aGenerator))) {
 								aBestSymbolSoFar=i;
-								aSymbolsImproved=true;
+								aSymbolsChanged=true;
 							}
 						}
 					}
 					aMappedSymbol->second=aBestSymbolSoFar;
 				}
-				if (iOptions._verbose && aSymbolsImproved)
+				if (iOptions._verbose && aSymbolsChanged)
 					std::cout << "Symbol step: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
 
 				std::pair<std::vector<char>::iterator,std::vector<char>::iterator> aBestSwapSoFar;
-				aVectorImproved=false;
+				aVectorChanged=false;
 				for (std::vector<char>::iterator aFrom=aCandidateVector.begin(); aFrom!=aCandidateVector.end(); ++aFrom)
 					for (std::vector<char>::iterator aTo=aFrom+1; aTo!=aCandidateVector.end(); ++aTo) {
 						iter_swap(aFrom, aTo);
@@ -343,12 +343,12 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 
 						if (considerCandidate(aLoopBestScore, aTolerated, aCandidateScore, aCurrentTolerance, aLastScore, aDoubleDistribution(aGenerator))) {
 							aBestSwapSoFar=std::pair<std::vector<char>::iterator,std::vector<char>::iterator>(aFrom, aTo);
-							aVectorImproved=true;
+							aVectorChanged=true;
 						} else
 							iter_swap(aFrom, aTo);
 					}
 
-				if (iOptions._verbose && aVectorImproved)
+				if (iOptions._verbose && aVectorChanged)
 					std::cout << "Vector step: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
 
 				if (aTolerated>iOptions._fuzzy*iCipherString.length())
@@ -358,7 +358,7 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 					if (aCurrentTolerance>1.0)
 						aCurrentTolerance=1;
 				}
-			} while (aSymbolsImproved || aVectorImproved);
+			} while (aSymbolsChanged || aVectorChanged);
 
 			if (iOptions._verbose) {
 				std::string aClear=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
@@ -482,9 +482,21 @@ std::string transpose(const std::string& iCipherString, const std::string& iFile
 	return aTransposed;
 }
 
+void printCipherStats(std::string& aCipherString) {
+	std::cout << "Cipher: " << aCipherString << std::endl;
+	std::cout << "Cipher length: " << aCipherString.length() << std::endl;
+	std::unordered_set<char> aSymbols;
+	for (unsigned int i = 0; i < aCipherString.length(); i++)
+		aSymbols.insert(aCipherString.at(i));
+	unsigned int N = aSymbols.size();
+	std::cout << "Cipher Symbols count: " << N << std::endl;
+	std::cout << "Unicity distance for homophonic ciphers: "
+			<< 1.47*N-49.91+0.45*(0.5 + N)*std::log(N)-0.45*(N-25.5)* std::log(N-26) << std::endl;
+}
+
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 14.12.2020 19:05" << std::endl;
+		std::cout << "cDecryptor Version 15.12.2020 16:43" << std::endl;
 		signal(SIGINT, signalHandler);
 
 		Options aOptions;
@@ -493,9 +505,7 @@ int main(int iArgc, char* iArgv[]) {
 		std::string aCipherString;
 		std::cout << "Reading cipher file " << aOptions._cipherfile << std::endl;
 		readCipher(aOptions._cipherfile, aCipherString);
-
-		std::cout << "Cipher: " << aCipherString << std::endl;
-		std::cout << "Cipher length: " << aCipherString.length() << std::endl;
+		printCipherStats(aCipherString);
 
 		if (aOptions._transpositionfile.length()>0) {
 			aCipherString=transpose(aCipherString, aOptions._transpositionfile);
