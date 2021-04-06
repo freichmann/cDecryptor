@@ -21,7 +21,6 @@ struct Options {
 	unsigned int _threadscount=1;
 	unsigned int _diskSize=0;
 	long double _random=0.05;
-	long double _fuzzy=0.02;
 	bool _verbose=false;
 };
 
