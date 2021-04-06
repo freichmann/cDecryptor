@@ -238,12 +238,11 @@ bool printIfGlobalBest(const RatedScore& iScore, const std::string& iClear, cons
 	return false;
 }
 
-signed int considerCandidate(RatedScore& ioLoopBestScore, const RatedScore& iCandidateScore, const long double& iCurrentTolerance, const RatedScore& iLastScore, const long double& iRandom) {
-	long double aTolerance=iCurrentTolerance*iRandom;
+signed int considerCandidate(RatedScore& ioLoopBestScore, const RatedScore& iCandidateScore, const long double& iTolerance, const RatedScore& iLastScore) {
 	bool aImproved=false;
 	bool aTolerated=false;
 
-	if (iCandidateScore.value() * (1.0 - aTolerance) > iLastScore.value()) {
+	if (iCandidateScore.value() * (1.0 - iTolerance) > iLastScore.value()) {
 		if (iCandidateScore < iLastScore)
 			aTolerated=true;
 
@@ -271,8 +270,9 @@ unsigned int optimizeSymbols(const std::string& iCipherString,
 		std::uniform_real_distribution<long double>& iDoubleDistribution,
 		std::default_random_engine& iGenerator, const unsigned long long& iThread) {
 	bool aSymbolsChanged;
-	unsigned int aTolerated=0;
+	unsigned int aTolerated;
 	do {
+		aTolerated=0;
 		aSymbolsChanged = false;
 		for (std::unordered_map<char, unsigned int>::iterator aMappedSymbol =
 				oCandidateMap.begin(); aMappedSymbol != oCandidateMap.end();
@@ -282,17 +282,15 @@ unsigned int optimizeSymbols(const std::string& iCipherString,
 			for (unsigned int i = 0; i < iCandidateVector.size(); i++) {
 				if (i != aBefore) {
 					aMappedSymbol->second = i;
-					std::string aCandidateString = buildClear(iCipherString,
-							oCandidateMap, iCandidateVector, iOptions);
-					RatedScore aCandidateScore(
-							Score(iNorms, aCandidateString),
-							aGlobalScoreStatistics);
-					signed int aRes = considerCandidate(ioLoopBestScore, aCandidateScore, iCurrentTolerance, iLastScore, iDoubleDistribution(iGenerator));
+					std::string aCandidateString = buildClear(iCipherString, oCandidateMap, iCandidateVector, iOptions);
+					RatedScore aCandidateScore( Score(iNorms, aCandidateString), aGlobalScoreStatistics);
+					signed int aRes = considerCandidate(ioLoopBestScore, aCandidateScore, iCurrentTolerance*iDoubleDistribution(iGenerator), iLastScore);
 					if (aRes>=0) {
 						aBestSymbolSoFar = i;
 						aSymbolsChanged = true;
-						aTolerated+=aRes;
-						if (aRes>0)
+						if (aRes==0)
+							aTolerated++;
+						else
 							printIfGlobalBest(aCandidateScore, aCandidateString, iThread, iCurrentTolerance, iCandidateVector, oCandidateMap, iOptions);
 					}
 				}
@@ -364,13 +362,13 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 							std::unordered_map<char, unsigned int> aInnerCandidateMap(aCandidateMap);
 							std::vector<char> aInnerCandidateVector(aCandidateVector);
 
-							aTolerated+=optimizeSymbols(iCipherString, iOptions, iNorms, aCurrentTolerance, aLastScore,
+							optimizeSymbols(iCipherString, iOptions, iNorms, aCurrentTolerance, aLastScore,
 									aInnerCandidateMap, aInnerCandidateVector, aLoopBestScore, aDoubleDistribution, aGenerator, iThread);
 
 							std::string aCandidateSolution=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
 							RatedScore aCandidateScore(Score(iNorms, aCandidateSolution), aGlobalScoreStatistics);
 
-							if (considerCandidate(aLoopBestScore, aCandidateScore, aCurrentTolerance, aLastScore, aDoubleDistribution(aGenerator)))
+							if (considerCandidate(aLoopBestScore, aCandidateScore, aCurrentTolerance*aDoubleDistribution(aGenerator), aLastScore))
 								aVectorChanged=true;
 							else
 								iter_swap(aFrom, aTo);
@@ -380,10 +378,6 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				if (iOptions._verbose)
 					std::cout << "Vector step: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
 			}
-
-//			if (checkIfGlobalBest(aClimberBestScore, aClimberBestString, aCandidateVector, aCandidateMap)) {
-//				logTime("Thread:", iThread, "Score:", aClimberBestScore, "Tolerance:", aCurrentTolerance, aClimberBestString);
-//			}
 
 			if (iOptions._verbose) {
 				std::string aClear=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
