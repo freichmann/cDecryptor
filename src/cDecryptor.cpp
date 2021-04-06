@@ -386,13 +386,13 @@ void hillclimber(const unsigned long long& iThread, const std::unordered_map<uns
 				logTime("DEBUG Thread:", iThread, "Stuck", "Tolerance:", aCurrentTolerance, "Score:", aLoopBestScore, aClear, concat(aCandidateVector));
 			}
 
-			if (aTolerated>iOptions._fuzzy*iCipherString.length())
-				aCurrentTolerance*=0.95;
-			else {
-				aCurrentTolerance*=1.05;
-				if (aCurrentTolerance>1.0)
-					aCurrentTolerance=1;
-			}
+//			if (aTolerated>iOptions._fuzzy*iCipherString.length())
+//				aCurrentTolerance*=0.95;
+//			else {
+//				aCurrentTolerance*=1.05;
+//				if (aCurrentTolerance>1.0)
+//					aCurrentTolerance=1;
+//			}
 
 			if (iOptions._random>0) {
 				std::pair<std::vector<char>, std::unordered_map<char, unsigned int>> aBest=getGlobalBest();
