@@ -229,22 +229,18 @@ bool printIfGlobalBest(const RatedScore& iScore, const std::string& iClear, cons
 	if (checkIfGlobalBest(iScore, iClear, iVector, iMap)) {
 		if (iOptions._diskSize==0)
 			logTime("Thread:", iThread, "Score:", iScore, "Clear:", iClear);
-		else {
-			std::string aChiffreDisk = concat(iVector);
-			logTime("Thread:", iThread, "Score:", iScore, "Clear:", iClear, "Chiffredisk:", aChiffreDisk);
-		}
+		else
+			logTime("Thread:", iThread, "Score:", iScore, "Clear:", iClear, "Chiffredisk:", concat(iVector));
 		return true;
 	}
 	return false;
 }
 
 bool considerCandidate(RatedScore& ioLoopBestScore, const RatedScore& iCandidateScore, const RatedScore& iLastScore) {
-
 	if (iCandidateScore > ioLoopBestScore) {
 		ioLoopBestScore = iCandidateScore;
 		return true;
 	}
-
 	return false;
 }
 
@@ -264,7 +260,7 @@ void optimizeSymbols(const std::string& iCipherString,
 				++aMappedSymbol) {
 			const unsigned int aBefore = aMappedSymbol->second;
 			unsigned int aBestSymbolSoFar = aBefore;
-			for (unsigned int i = 0; i < iCandidateVector.size(); i++) {
+			for (unsigned int i = 0; i < iCandidateVector.size(); i++)
 				if (i != aBefore) {
 					aMappedSymbol->second = i;
 					std::string aCandidateString = buildClear(iCipherString, oCandidateMap, iCandidateVector, iOptions);
@@ -275,7 +271,6 @@ void optimizeSymbols(const std::string& iCipherString,
 						printIfGlobalBest(aCandidateScore, aCandidateString, iThread, iCandidateVector, oCandidateMap, iOptions);
 					}
 				}
-			}
 			aMappedSymbol->second = aBestSymbolSoFar;
 		}
 	} while (aSymbolsChanged);
