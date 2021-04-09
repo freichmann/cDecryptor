@@ -17,4 +17,4 @@ sudo docker run -d --rm --name cdecryptor -e THREADS="4" -e RANDOMIZE="0.025" -e
 
 # Kubernetes
 for i in $(kubectl get pods -n cdecryptor | cut -f 1 -d" " | grep -v NAME ); do echo -n "${i}:"; kubectl logs ${i} --tail 1 -n cdecryptor; done;
-for i in $(kubectl get pods -n cdecryptor | cut -f 1 -d" " | grep -v NAME ); do kubectl logs ${i} --tail 1 -n cdecryptor | cut -b 36-; done | sort
+for i in $(kubectl get pods -n cdecryptor | cut -f 1 -d" " | grep -v NAME ); do echo -n $(kubectl logs ${i} --tail 1 -n cdecryptor | cut -b 36-); echo " POD: ${i}"; done | sort
