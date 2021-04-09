@@ -275,7 +275,7 @@ void optimizeSymbols(const std::string& iCipherString,
 		}
 	} while (aSymbolsChanged);
 
-	if (iOptions._verbose)
+	if (iOptions._verbose && iOptions._diskSize>0)
 		std::cout << "Symbol step: " << buildClear(iCipherString, oCandidateMap, iCandidateVector, iOptions) << std::endl;
 }
 
@@ -324,10 +324,9 @@ void hillclimber(const unsigned long long& iThread,
 				aClimberBestMap=aCandidateMap;
 				aClimberBestLetterVector=aCandidateVector;
 				aCounterUntilReset=iOptions._maxiter;
-				printIfGlobalBest(aLoopBestScore, aCandidateString, iThread, aCandidateVector, aCandidateMap, iOptions);
 			}
 
-			if (iOptions._diskSize!=0) {
+			if (iOptions._diskSize>0) {
 				bool aVectorChanged;
 				do {
 					aVectorChanged=false;
@@ -351,7 +350,7 @@ void hillclimber(const unsigned long long& iThread,
 						}
 				} while (aVectorChanged);
 
-				if (iOptions._verbose)
+				if (iOptions._verbose && iOptions._diskSize>0)
 					std::cout << "Vector step: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
 			}
 
@@ -487,7 +486,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 6.4.2020 12:34" << std::endl;
+		std::cout << "cDecryptor Version 9.4.2020 12:34" << std::endl;
 		signal(SIGINT, signalHandler);
 
 		Options aOptions;
