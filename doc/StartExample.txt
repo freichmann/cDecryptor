@@ -6,14 +6,14 @@ echo "core" > /proc/sys/kernel/core_pattern
 ulimit -c unlimited
 
 # 408
-~/git/cDecryptor/cDecryptor -t 4 -r 0.1 -x 1000 -w ~/git/Languages/English/sample.txt -l ~/git/Languages/English/1-grams.txt -l ~/git/Languages/English/5-grams.txt -c ~/git/Ciphers/408.zodiac.txt
+~/git/cDecryptor/cDecryptor -t 4 -r 0.1 -x 100 -w ~/git/Languages/English/sample.txt -l ~/git/Languages/English/1-grams.txt -l ~/git/Languages/English/5-grams.txt -c ~/git/Ciphers/408.zodiac.txt
 
 # 340
-~/git/cDecryptor/cDecryptor -t 4 -r 0.05 -x 1000 -z ~/git/cDecryptor/Transposition/340.zodiac.transposition.txt -w ~/git/Languages/English/sample.txt -l ~/git/LargeLang/English/1-grams.txt -l ~/git/LargeLang/English/5-grams.txt -c ~/git/Ciphers/340.zodiac.txt
+~/git/cDecryptor/cDecryptor -t 4 -r 0.1 -x 100 -z ~/git/cDecryptor/Transposition/340.zodiac.transposition.txt -w ~/git/Languages/English/sample.txt -l ~/git/LargeLang/English/1-grams.txt -l ~/git/LargeLang/English/5-grams.txt -c ~/git/Ciphers/340.zodiac.txt
 
 # Docker
 sudo docker build ./ --no-cache --rm=true -t m1.fritz.box:444/cdecryptor:latest
-sudo docker run -d --rm --name cdecryptor -e THREADS="4" -e RANDOMIZE="0.025" -e RESET="250" -e CIPHER="/Ciphers/408.zodiac.txt" -e WORDS="/Languages/English/sample.txt" -e LANG1="/Languages/English/1-grams.txt" -e LANG5="/Languages/English/5-grams.txt" m1.fritz.box:444/cdecryptor:latest
+sudo docker run -d --rm --name cdecryptor -e THREADS="4" -e RANDOMIZE="0.1" -e RESET="100" -e CIPHER="/Ciphers/408.zodiac.txt" -e WORDS="/Languages/English/sample.txt" -e LANG1="/Languages/English/1-grams.txt" -e LANG5="/Languages/English/5-grams.txt" m1.fritz.box:444/cdecryptor:latest
 
 # Kubernetes
 for i in $(kubectl get pods -n cdecryptor | cut -f 1 -d" " | grep -v NAME ); do echo -n "${i}:"; kubectl logs ${i} --tail 1 -n cdecryptor; done;

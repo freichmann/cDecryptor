@@ -74,21 +74,29 @@ void readNorms(std::list<std::string>& iFileNames, std::unordered_map<unsigned l
 	}
 }
 
-void partiallyShuffleMap(std::unordered_map<char, unsigned int>& iSymbolMap, const long double &iRandom) {
+bool partiallyShuffleMap(std::unordered_map<char, unsigned int>& iSymbolMap, const long double &iRandom) {
 	static std::uniform_int_distribution<unsigned int> aCharDistribution(0, (unsigned int)'z'-(unsigned int)'a');
+	bool aShuffled=false;
 
 	for (std::unordered_map<char, unsigned int>::iterator i=iSymbolMap.begin(); i!=iSymbolMap.end(); ++i)
-		if (aGlobalConstantDistribution(aGlobalRandomEngine)<iRandom)
+		if (aGlobalConstantDistribution(aGlobalRandomEngine)<iRandom) {
 			i->second=(char)(aCharDistribution(aGlobalRandomEngine));
+			aShuffled=true;
+		}
+	return aShuffled;
 }
 
-void partiallyShuffleLetters(std::vector<char>& iVector, const long double &iRandom) {
+bool partiallyShuffleLetters(std::vector<char>& iVector, const long double &iRandom) {
 	std::uniform_int_distribution<unsigned int> aCharDistribution(0, iVector.size());
+	bool aShuffled=false;
 
 	for (std::vector<char>::iterator aFrom=iVector.begin(); aFrom!=iVector.end(); ++aFrom)
 		for (std::vector<char>::iterator aTo=iVector.begin(); aTo!=iVector.end(); ++aTo)
-			if (aGlobalConstantDistribution(aGlobalRandomEngine)<iRandom)
+			if (aGlobalConstantDistribution(aGlobalRandomEngine)<iRandom) {
 				std::iter_swap(aFrom, aTo);
+				aShuffled=true;
+			}
+	return aShuffled;
 }
 
 void randomMapInit(const std::string& iCipher, std::unordered_map<char, unsigned int>& oSymbolMap, std::vector<char>& oLetterVec) {
@@ -116,7 +124,7 @@ void randomMapInit(const std::string& iCipher, std::unordered_map<char, unsigned
 	}
 }
 
-std::string buildClear(const std::string& iCipherString, std::unordered_map<char, unsigned int>& iSymbolMap, std::vector<char>& iLetterVec, const Options& iOptions) {
+std::string buildClear(const std::string& iCipherString, const std::unordered_map<char, unsigned int>& iSymbolMap, const std::vector<char>& iLetterVec, const Options& iOptions) {
 	std::string iClear;
 	for (unsigned int i=0; i<iCipherString.length(); i++) {
 		if (iOptions._diskSize==0)
@@ -146,7 +154,7 @@ void insertSymbols(std::unordered_map<char,unsigned int>& iSymbolMap, const std:
 	iLetterVec=aChars;
 }
 
-bool checkIfGlobalBest(const RatedScore& iRatedScore, const std::string& iClear, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap) {
+bool checkIfGlobalBest(const RatedScore& iRatedScore, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap) {
 	Lock aLock(aGlobalBestScoreMutex);
 	if (iRatedScore>aGlobalBestScore) {
 		aGlobalBestScore = iRatedScore;
@@ -225,8 +233,9 @@ std::string concat(const std::vector<char>& iCandidateLetterVector) {
 	return aChiffreDisk;
 }
 
-bool printIfGlobalBest(const RatedScore& iScore, const std::string& iClear, const unsigned long long& iThread, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap, const Options& iOptions) {
-	if (checkIfGlobalBest(iScore, iClear, iVector, iMap)) {
+bool printIfGlobalBest(const RatedScore& iScore, const std::string& iCipher, const unsigned long long& iThread, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap, const Options& iOptions) {
+	if (checkIfGlobalBest(iScore, iVector, iMap)) {
+		std::string iClear=buildClear(iCipher, iMap, iVector, iOptions);
 		if (iOptions._diskSize==0)
 			logTime("Thread:", iThread, "Score:", iScore, "Clear:", iClear);
 		else
@@ -236,15 +245,15 @@ bool printIfGlobalBest(const RatedScore& iScore, const std::string& iClear, cons
 	return false;
 }
 
-bool acceptCandidate(const RatedScore& iBestScore, const RatedScore& iCandidateScore) {
-	return (std::isnan(iBestScore.value()) || iCandidateScore > iBestScore);
+bool acceptCandidate(const RatedScore& iPreviousScore, const RatedScore& iCandidateScore) {
+	return (std::isnan(iPreviousScore.value()) || iCandidateScore > iPreviousScore);
 }
 
 Decision tolerateCandidate(const RatedScore& iBestScore, const RatedScore& iCandidateScore, long double iTemperature) {
-//	std::cout << "BestScore: " << iBestScore.value() << std::endl;
-//	std::cout << "CandidateScore: " << iCandidateScore.value() << std::endl;
-//	std::cout << "Temperature: " << iTemperature << std::endl;
-//	std::cout << "tolerance threshold: " << std::exp(-(iBestScore.value()-iCandidateScore.value())/(-iBestScore.value()*iTemperature)) << std::endl;
+	//	std::cout << "BestScore: " << iBestScore.value() << std::endl;
+	//	std::cout << "CandidateScore: " << iCandidateScore.value() << std::endl;
+	//	std::cout << "Temperature: " << iTemperature << std::endl;
+	//	std::cout << "tolerance threshold: " << std::exp(-(iBestScore.value()-iCandidateScore.value())/(-iBestScore.value()*iTemperature)) << std::endl;
 
 	if (acceptCandidate(iBestScore, iCandidateScore))
 		return ACCEPT;
@@ -315,38 +324,33 @@ void hillclimber(const unsigned long long& iThread,
 	}
 
 	while (true) {
-		std::string aCurrentBestString=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
-		RatedScore aCurrentBestScore(Score(iNorms, aCurrentBestString), aGlobalScoreStatistics);
-		std::unordered_map<char, unsigned int> aCurrentBestMap;
-		std::vector<char> aCurrentBestLetterVector;
+		RatedScore aLoopBestScore(Score(iNorms, buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions)), aGlobalScoreStatistics);
+		std::unordered_map<char, unsigned int> aLoopBestMap;
+		std::vector<char> aLoopBestVector;
 
 		while (aCounterUntilReset>0 && iOptions._random>0) {
 			std::string aCandidateString=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
-			RatedScore aSymbolsCandidateScore=RatedScore(Score(iNorms, aCandidateString), aGlobalScoreStatistics);
+			RatedScore aCandidateScore=RatedScore(Score(iNorms, aCandidateString), aGlobalScoreStatistics);
 
 			if (iOptions._verbose)
-				logTime("DEBUG Thread:", iThread, "Start", "Score:", aSymbolsCandidateScore, "Counter until reset:", aCounterUntilReset, "Cool down:", aTemperature, aCandidateString, concat(aCandidateVector));
+				logTime("DEBUG Thread:", iThread, "Start", "Score:", aCandidateScore, "Counter until reset:", aCounterUntilReset, "Cool down:", aTemperature, aCandidateString, concat(aCandidateVector));
 
-			aSymbolsCandidateScore=optimizeSymbols(iCipherString, iOptions, iNorms, aCandidateMap, aCandidateVector, iThread);
+			aCandidateScore=optimizeSymbols(iCipherString, iOptions, iNorms, aCandidateMap, aCandidateVector, iThread);
 
-			if (acceptCandidate(aCurrentBestScore, aSymbolsCandidateScore)) {
-				aCurrentBestScore=aSymbolsCandidateScore;
-				aCurrentBestString=aCandidateString;
-				aCurrentBestMap=aCandidateMap;
-				aCurrentBestLetterVector=aCandidateVector;
-				printIfGlobalBest(aSymbolsCandidateScore, aCandidateString, iThread, aCandidateVector, aCandidateMap, iOptions);
+			if (acceptCandidate(aLoopBestScore, aCandidateScore)) {
+				aLoopBestScore=aCandidateScore;
+				aLoopBestMap=aCandidateMap;
+				aLoopBestVector=aCandidateVector;
+				if (acceptCandidate(aClimberBestScore, aLoopBestScore)) {
+					aClimberBestScore=aLoopBestScore;
+					aCounterUntilReset=iOptions._maxiter;
+				}
+				printIfGlobalBest(aCandidateScore, iCipherString, iThread, aCandidateVector, aCandidateMap, iOptions);
 			} else {
-				Decision aDecision=tolerateCandidate( aClimberBestScore, aSymbolsCandidateScore, aTemperature );
-				if (aDecision!=REJECT) {
-					aCurrentBestScore=aSymbolsCandidateScore;
-					aCurrentBestString=aCandidateString;
-					aCurrentBestMap=aCandidateMap;
-					aCurrentBestLetterVector=aCandidateVector;
-					if (aDecision==ACCEPT) {
-						aCounterUntilReset=iOptions._maxiter;
-						aClimberBestScore=aSymbolsCandidateScore;
-						printIfGlobalBest(aSymbolsCandidateScore, aCandidateString, iThread, aCandidateVector, aCandidateMap, iOptions);
-					}
+				if (TOLERATE==tolerateCandidate( aClimberBestScore, aCandidateScore, aTemperature)) {
+					aLoopBestScore=aCandidateScore;
+					aLoopBestMap=aCandidateMap;
+					aLoopBestVector=aCandidateVector;
 				}
 			}
 
@@ -366,12 +370,12 @@ void hillclimber(const unsigned long long& iThread,
 
 							Decision aDecision=tolerateCandidate(aClimberBestScore, aMapCandidateScore, aTemperature );
 							if (aDecision!=REJECT) {
-								aSymbolsCandidateScore=aMapCandidateScore;
+								aCandidateScore=aMapCandidateScore;
 								aVectorChanged=true;
 								if (aDecision==ACCEPT) {
 									aCounterUntilReset=iOptions._maxiter;
-									aClimberBestScore=aSymbolsCandidateScore;
-									printIfGlobalBest(aSymbolsCandidateScore, aCandidateString, iThread, aCandidateVector, aCandidateMap, iOptions);
+									aClimberBestScore=aCandidateScore;
+									printIfGlobalBest(aCandidateScore, iCipherString, iThread, aCandidateVector, aCandidateMap, iOptions);
 								}
 							} else
 								iter_swap(aFrom, aTo);
@@ -384,19 +388,20 @@ void hillclimber(const unsigned long long& iThread,
 
 			if (iOptions._verbose) {
 				std::string aClear=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
-				aSymbolsCandidateScore=RatedScore(Score(iNorms, aClear), aGlobalScoreStatistics);
+				aCandidateScore=RatedScore(Score(iNorms, aClear), aGlobalScoreStatistics);
 
-				logTime("DEBUG Thread:", iThread, "Stuck", "Score:", aSymbolsCandidateScore, "Counter until reset:", aCounterUntilReset, "Cool down:", aTemperature, aClear, concat(aCandidateVector));
+				logTime("DEBUG Thread:", iThread, "Stuck", "Score:", aCandidateScore, "Counter until reset:", aCounterUntilReset, "Cool down:", aTemperature, aClear, concat(aCandidateVector));
 			}
 
-			if (iOptions._random>0) {
+			if (aTemperature*iOptions._random>0) {
 				std::pair<std::vector<char>, std::unordered_map<char, unsigned int>> aBest=getGlobalBest();
 				aCandidateMap=aBest.second;
 				aCandidateVector=aBest.first;
-				//				partiallyShuffleMap(aCandidateMap, iOptions._random/2.0);
-				//				partiallyShuffleLetters(aCandidateVector, iOptions._random/4.0);
-				partiallyShuffleMap(aCandidateMap, aTemperature*iOptions._random/2.0);
-				partiallyShuffleLetters(aCandidateVector, aTemperature*iOptions._random/4.0);
+				bool aShuffled=false;
+				while (!aShuffled) {
+					aShuffled |= partiallyShuffleMap(aCandidateMap, aTemperature*iOptions._random/2.0);
+					aShuffled |= partiallyShuffleLetters(aCandidateVector, aTemperature*iOptions._random/4.0);
+				}
 			}
 
 			aCounterUntilReset--;
@@ -417,18 +422,18 @@ void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& iNor
 	for (std::unordered_map<unsigned long long, NGram*>::iterator i=iNorms.begin(); i != iNorms.end(); ++i) {
 		long double aLnNGramPerfect = -logl(sqrtl(2.0 * M_PI) * aGlobalScoreStatistics.at(i->first)._sigma);
 		std::cout << setiosflags(std::ios::fixed) << std::setprecision(6)
-		<< "NGram length:" << i->second->_length << " NGrams:"
-		<< i->second->_NGramMap.size() << " Samples:"
-		<< i->second->_count << " Mean:" << aGlobalScoreStatistics.at(i->first)._mean
-		<< " StdDev:" << aGlobalScoreStatistics.at(i->first)._sigma << " Perfect: "
-		<< aLnNGramPerfect << std::endl;
+				<< "NGram length:" << i->second->_length << " NGrams:"
+				<< i->second->_NGramMap.size() << " Samples:"
+				<< i->second->_count << " Mean:" << aGlobalScoreStatistics.at(i->first)._mean
+				<< " StdDev:" << aGlobalScoreStatistics.at(i->first)._sigma << " Perfect: "
+				<< aLnNGramPerfect << std::endl;
 		aLnPerfect += aLnNGramPerfect;
 	}
 	std::cout << "Best possible score: " << aLnPerfect << std::endl;
 }
 
 void signalHandler(const int iSigNum) {
-	std::cout << "Interrupt signal " << iSigNum << " received. Exiting." << std::endl;
+	std::cout << "Received signal " << iSigNum << std::endl;
 	exit(iSigNum);
 }
 
@@ -522,7 +527,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 9.4.2020 12:34" << std::endl;
+		std::cout << "cDecryptor Version 12.4.2020 22:42" << std::endl;
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
 
@@ -575,5 +580,9 @@ int main(int iArgc, char* iArgv[]) {
 	catch (std::string& iString) {
 		std::cerr << "Error caught: " << iString << std::endl;
 	}
+	catch (...) {
+		std::cerr << "Unhandled error caught." << std::endl;
+	}
+
 	return EXIT_SUCCESS;
 }
