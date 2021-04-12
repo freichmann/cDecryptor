@@ -354,7 +354,6 @@ void hillclimber(const unsigned long long& iThread,
 				}
 			}
 
-
 			if (iOptions._diskSize>0) {
 				bool aVectorChanged;
 				do {
