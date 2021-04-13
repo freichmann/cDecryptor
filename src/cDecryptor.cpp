@@ -420,7 +420,7 @@ void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& iNor
 	long double aLnPerfect = 0.0;
 	for (std::unordered_map<unsigned long long, NGram*>::iterator i=iNorms.begin(); i != iNorms.end(); ++i) {
 		long double aLnNGramPerfect = -logl(sqrtl(2.0 * M_PI) * aGlobalScoreStatistics.at(i->first)._sigma);
-		std::cout << setiosflags(std::ios::fixed) << std::setprecision(6)
+		std::cout << setiosflags(std::ios::fixed)
 				<< "NGram length:" << i->second->_length << " NGrams:"
 				<< i->second->_NGramMap.size() << " Samples:"
 				<< i->second->_count << " Mean:" << aGlobalScoreStatistics.at(i->first)._mean
