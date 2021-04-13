@@ -299,9 +299,6 @@ RatedScore optimizeSymbols(const std::string& iCipherString,
 		}
 	} while (aSymbolsChanged);
 
-	if (iOptions._verbose && iOptions._diskSize>0)
-		std::cout << "Symbol step: " << buildClear(iCipherString, oCandidateMap, iCandidateVector, iOptions) << std::endl;
-
 	return aBestScore;
 }
 
@@ -309,11 +306,11 @@ void hillclimber(const unsigned long long& iThread,
 		const std::unordered_map<unsigned long long, NGram*>& iNorms,
 		const std::string& iCipherString,
 		const Options& iOptions) {
-	std::unordered_map<char, unsigned int> aCandidateMap;
-	std::vector<char> aCandidateVector;
 	unsigned long long aCounterUntilReset=iOptions._maxiter;
 	long double aTemperature=1.0;
 	RatedScore aClimberBestScore;
+	std::unordered_map<char, unsigned int> aCandidateMap;
+	std::vector<char> aCandidateVector;
 
 	randomMapInit(iCipherString, aCandidateMap, aCandidateVector);
 
@@ -337,6 +334,9 @@ void hillclimber(const unsigned long long& iThread,
 
 			aCandidateScore=optimizeSymbols(iCipherString, iOptions, iNorms, aCandidateMap, aCandidateVector, iThread);
 
+			if (iOptions._verbose && iOptions._diskSize>0)
+				std::cout << "Symbol step: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
+
 			if (acceptCandidate(aLoopBestScore, aCandidateScore)) {
 				aLoopBestScore=aCandidateScore;
 				aLoopBestMap=aCandidateMap;
@@ -355,31 +355,44 @@ void hillclimber(const unsigned long long& iThread,
 			}
 
 			if (iOptions._diskSize>0) {
-				bool aVectorChanged;
+				bool aVectorImprovement;
 				do {
-					aVectorChanged=false;
+					aVectorImprovement=false;
+					if (iOptions._verbose && aVectorImprovement)
+						std::cout << "Begin vector iteration: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
 					for (std::vector<char>::iterator aFrom=aCandidateVector.begin(); aFrom!=aCandidateVector.end(); ++aFrom)
 						for (std::vector<char>::iterator aTo=aFrom+1; aTo!=aCandidateVector.end(); ++aTo) {
 							iter_swap(aFrom, aTo);
-
+							if (iOptions._verbose)
+								std::cout << "Testing vector: " << concat(aCandidateVector) << std::endl;
 							std::unordered_map<char, unsigned int> aInnerCandidateMap(aCandidateMap);
 							std::vector<char> aInnerCandidateVector(aCandidateVector);
 
 							RatedScore aMapCandidateScore=optimizeSymbols(iCipherString, iOptions, iNorms, aInnerCandidateMap, aInnerCandidateVector, iThread);
 
-							Decision aDecision=tolerateCandidate(aClimberBestScore, aMapCandidateScore, aTemperature );
-							if (aDecision!=REJECT) {
-								aCandidateScore=aMapCandidateScore;
-								aVectorChanged=true;
-								if (aDecision==ACCEPT) {
+							if (acceptCandidate(aLoopBestScore, aMapCandidateScore)) {
+								aLoopBestScore=aMapCandidateScore;
+								aLoopBestMap=aCandidateMap;
+								aLoopBestVector=aInnerCandidateVector;
+								if (acceptCandidate(aClimberBestScore, aLoopBestScore)) {
+									aVectorImprovement=true;
+									aClimberBestScore=aLoopBestScore;
 									aCounterUntilReset=iOptions._maxiter;
-									aClimberBestScore=aCandidateScore;
-									printIfGlobalBest(aCandidateScore, iCipherString, iThread, aCandidateVector, aCandidateMap, iOptions);
 								}
-							} else
-								iter_swap(aFrom, aTo);
+								printIfGlobalBest(aMapCandidateScore, iCipherString, iThread, aCandidateVector, aCandidateMap, iOptions);
+							} else {
+								if (REJECT!=tolerateCandidate( aClimberBestScore, aMapCandidateScore, aTemperature)) {
+									aLoopBestScore=aMapCandidateScore;
+									aLoopBestMap=aCandidateMap;
+									aLoopBestVector=aCandidateVector;
+								} else
+									iter_swap(aFrom, aTo);
+							}
 						}
-				} while (aVectorChanged);
+					if (iOptions._verbose && aVectorImprovement)
+						std::cout << "End vector iteration: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
+
+				} while (aVectorImprovement);
 
 				if (iOptions._verbose && iOptions._diskSize>0)
 					std::cout << "Vector step: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
@@ -421,11 +434,11 @@ void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& iNor
 	for (std::unordered_map<unsigned long long, NGram*>::iterator i=iNorms.begin(); i != iNorms.end(); ++i) {
 		long double aLnNGramPerfect = -logl(sqrtl(2.0 * M_PI) * aGlobalScoreStatistics.at(i->first)._sigma);
 		std::cout << setiosflags(std::ios::fixed)
-				<< "NGram length:" << i->second->_length << " NGrams:"
-				<< i->second->_NGramMap.size() << " Samples:"
-				<< i->second->_count << " Mean:" << aGlobalScoreStatistics.at(i->first)._mean
-				<< " StdDev:" << aGlobalScoreStatistics.at(i->first)._sigma << " Perfect: "
-				<< aLnNGramPerfect << std::endl;
+						<< "NGram length:" << i->second->_length << " NGrams:"
+						<< i->second->_NGramMap.size() << " Samples:"
+						<< i->second->_count << " Mean:" << aGlobalScoreStatistics.at(i->first)._mean
+						<< " StdDev:" << aGlobalScoreStatistics.at(i->first)._sigma << " Perfect: "
+						<< aLnNGramPerfect << std::endl;
 		aLnPerfect += aLnNGramPerfect;
 	}
 	std::cout << "Best possible score: " << aLnPerfect << std::endl;
@@ -538,6 +551,9 @@ int main(int iArgc, char* iArgv[]) {
 		std::cout << "Reading cipher file " << aOptions._cipherfile << std::endl;
 		readCipher(aOptions._cipherfile, aCipherString);
 		printCipherStats(aCipherString);
+
+		if (aOptions._diskSize>0)
+			std::cout << "Chiffre Disk Size " << aOptions._diskSize << std::endl;
 
 		if (aOptions._transpositionfile.length()>0) {
 			aCipherString=transpose(aCipherString, aOptions._transpositionfile);
