@@ -527,6 +527,7 @@ void printCipherStats(std::string& aCipherString) {
 int main(int iArgc, char* iArgv[]) {
 	try {
 		std::cout << "cDecryptor Version 12.4.2020 22:42" << std::endl;
+		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
 
