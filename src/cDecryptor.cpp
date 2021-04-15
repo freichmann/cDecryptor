@@ -437,11 +437,11 @@ void printBestPossibleScore(std::unordered_map<unsigned long long, NGram*>& iNor
 						<< "NGram length:" << i->second->_length << " NGrams:"
 						<< i->second->_NGramMap.size() << " Samples:"
 						<< i->second->_count << " Mean:" << aGlobalScoreStatistics.at(i->first)._mean
-						<< " StdDev:" << aGlobalScoreStatistics.at(i->first)._sigma << " Perfect: "
+						<< " StdDev:" << aGlobalScoreStatistics.at(i->first)._sigma << " Optimum: "
 						<< aLnNGramPerfect << std::endl;
 		aLnPerfect += aLnNGramPerfect;
 	}
-	std::cout << "Best possible score: " << aLnPerfect << std::endl;
+	std::cout << "Score optimum: " << aLnPerfect << std::endl;
 }
 
 void signalHandler(const int iSigNum) {
@@ -539,7 +539,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 12.4.2020 22:42" << std::endl;
+		std::cout << "cDecryptor Version 15.4.2020 10:32" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
