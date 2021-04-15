@@ -518,7 +518,7 @@ std::string transpose(const std::string& iCipherString, const std::string& iFile
 			if (aStringStream.peek() == ',')
 				aStringStream.ignore();
 		}
-		for (std::size_t i = 0; i < aVector.size(); i++)
+		for (std::size_t i = 0; i < std::min(aVector.size(),iCipherString.length()); i++)
 			aTransposed += iCipherString.at(aVector.at(i));
 	} else
 		throw "Failed to open " + iFileName;
@@ -533,7 +533,8 @@ void printCipherStats(std::string& aCipherString) {
 		aSymbols.insert(aCipherString.at(i));
 	unsigned int N = aSymbols.size();
 	std::cout << "Cipher Symbols count: " << N << std::endl;
-	std::cout << "Unicity distance for homophonic ciphers: "
+	if (N>26)
+		std::cout << "Unicity distance for homophonic ciphers: "
 			<< 1.47*N-49.91+0.45*(0.5 + N)*std::log(N)-0.45*(N-25.5)* std::log(N-26) << std::endl;
 }
 
