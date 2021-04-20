@@ -250,11 +250,6 @@ bool acceptCandidate(const RatedScore& iPreviousScore, const RatedScore& iCandid
 }
 
 Decision tolerateCandidate(const RatedScore& iBestScore, const RatedScore& iCandidateScore, long double iTemperature) {
-	//	std::cout << "BestScore: " << iBestScore.value() << std::endl;
-	//	std::cout << "CandidateScore: " << iCandidateScore.value() << std::endl;
-	//	std::cout << "Temperature: " << iTemperature << std::endl;
-	//	std::cout << "tolerance threshold: " << std::exp(-(iBestScore.value()-iCandidateScore.value())/(-iBestScore.value()*iTemperature)) << std::endl;
-
 	if (acceptCandidate(iBestScore, iCandidateScore))
 		return ACCEPT;
 	else {
@@ -316,6 +311,9 @@ void hillclimber(const unsigned long long& iThread,
 
 	if (iThread==0) {
 		insertSymbols(aCandidateMap, iCipherString, aCandidateVector, iOptions);
+		std::string aCandidateString=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
+		aClimberBestScore=RatedScore(Score(iNorms, aCandidateString), aGlobalScoreStatistics);
+		printIfGlobalBest(aClimberBestScore, iCipherString, iThread, aCandidateVector, aCandidateMap, iOptions);
 		if (iOptions._verbose)
 			std::cout << "Thread " << iThread << " applied with seed " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
 	}
@@ -540,7 +538,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 15.4.2020 10:32" << std::endl;
+		std::cout << "cDecryptor Version 20.4.2020 11:13" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
@@ -558,7 +556,8 @@ int main(int iArgc, char* iArgv[]) {
 
 		if (aOptions._transpositionfile.length()>0) {
 			aCipherString=transpose(aCipherString, aOptions._transpositionfile);
-			std::cout << "After transposition: " << aCipherString <<                     std::endl;
+			std::cout << "Cipher string after transposition: " << aCipherString << std::endl;
+			std::cout << "Cipher length after transposition: " << aCipherString.length() << std::endl;
 		}
 
 		std::cout << "Randomize fraction: " << aOptions._random << std::endl;
@@ -568,7 +567,7 @@ int main(int iArgc, char* iArgv[]) {
 		std::unordered_map<unsigned long long, NGram*> aNorms;
 		readNorms(aOptions._ngramsfiles, aNorms);
 
-		std::cout << "Analyzing sample text file: " << aOptions._textfile << std::endl;
+		std::cout << "Building statistics of scores of sample text file " << aOptions._textfile << " for snippets of length " << aCipherString.length() << std::endl;
 		computeScoreStatistics(aOptions._textfile, aNorms, aCipherString);
 
 		printBestPossibleScore(aNorms);
