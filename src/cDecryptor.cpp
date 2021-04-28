@@ -538,7 +538,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 20.4.2020 11:13" << std::endl;
+		std::cout << "cDecryptor Version 28.4.2020 14:39" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
@@ -562,6 +562,9 @@ int main(int iArgc, char* iArgv[]) {
 
 		std::cout << "Randomize fraction: " << aOptions._random << std::endl;
 		std::cout << "Random re-initialization after " << aOptions._maxiter << " iterations" << std::endl;
+
+		if (aOptions._threadscount==0)
+			aOptions._threadscount = std::thread::hardware_concurrency();
 		std::cout << "Parallel threads: " << aOptions._threadscount << std::endl;
 
 		std::unordered_map<unsigned long long, NGram*> aNorms;

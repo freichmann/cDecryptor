@@ -18,7 +18,7 @@ struct Options {
 	std::string _transpositionfile="";
 	std::string _seed="";
 	unsigned int _maxiter=250;
-	unsigned int _threadscount=1;
+	unsigned int _threadscount=0;
 	unsigned int _diskSize=0;
 	long double _random=0.025;
 	bool _verbose=false;
