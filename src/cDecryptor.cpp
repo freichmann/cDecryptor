@@ -306,6 +306,7 @@ void hillclimber(const unsigned long long& iThread,
 	RatedScore aClimberBestScore;
 	std::unordered_map<char, unsigned int> aCandidateMap;
 	std::vector<char> aCandidateVector;
+	unsigned long long aGiveUp=0;
 
 	randomMapInit(iCipherString, aCandidateMap, aCandidateVector);
 
@@ -314,11 +315,11 @@ void hillclimber(const unsigned long long& iThread,
 		std::string aCandidateString=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
 		aClimberBestScore=RatedScore(Score(iNorms, aCandidateString), aGlobalScoreStatistics);
 		printIfGlobalBest(aClimberBestScore, iCipherString, iThread, aCandidateVector, aCandidateMap, iOptions);
-		if (iOptions._verbose)
+		if (iOptions._verbose && iOptions._seed!="")
 			std::cout << "Thread " << iThread << " applied with seed " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
 	}
 
-	while (true) {
+	while (iOptions._giveUp==0 || aGiveUp<=iOptions._giveUp ) {
 		RatedScore aLoopBestScore(Score(iNorms, buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions)), aGlobalScoreStatistics);
 		std::unordered_map<char, unsigned int> aLoopBestMap;
 		std::vector<char> aLoopBestVector;
@@ -424,6 +425,11 @@ void hillclimber(const unsigned long long& iThread,
 		randomMapInit(iCipherString, aCandidateMap, aCandidateVector);
 		aCounterUntilReset=iOptions._maxiter;
 		aTemperature=1.0;
+
+		aGiveUp++;
+		if (iOptions._verbose) {
+			logTime("DEBUG Thread:", iThread, "Random re-initialization", aGiveUp);
+		}
 	}
 }
 
@@ -449,7 +455,7 @@ void signalHandler(const int iSigNum) {
 
 void parseOptions(const int iArgc, char* iArgv[], Options& oOptions) {
 	int aInt;
-	while ((aInt = getopt(iArgc, iArgv, "c:d:f:l:p:r:s:t:vw:x:z:")) != -1) {
+	while ((aInt = getopt(iArgc, iArgv, "c:d:f:g:l:p:r:s:t:vw:x:z:")) != -1) {
 		switch (aInt) {
 		case 'c':
 			if (optarg)
@@ -458,6 +464,10 @@ void parseOptions(const int iArgc, char* iArgv[], Options& oOptions) {
 		case 'd':
 			if (optarg)
 				oOptions._diskSize = atoi(optarg);
+			break;
+		case 'g':
+			if (optarg)
+				oOptions._giveUp = atoi(optarg);
 			break;
 		case 'l':
 			if (optarg)
@@ -538,7 +548,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 28.4.2020 14:39" << std::endl;
+		std::cout << "cDecryptor Version 29.4.2020 13:24" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
@@ -561,7 +571,13 @@ int main(int iArgc, char* iArgv[]) {
 		}
 
 		std::cout << "Randomize fraction: " << aOptions._random << std::endl;
-		std::cout << "Random re-initialization after " << aOptions._maxiter << " iterations" << std::endl;
+		std::cout << "Random re-initialization after " << aOptions._maxiter << " iterations without improvement" << std::endl;
+
+		if (aOptions._giveUp==0)
+			std::cout << "Never give up with";
+		else
+			std::cout << "Give up after " << aOptions._giveUp;
+		std::cout << " random re-initializations" << std::endl;
 
 		if (aOptions._threadscount==0)
 			aOptions._threadscount = std::thread::hardware_concurrency();

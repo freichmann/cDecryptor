@@ -20,6 +20,7 @@ struct Options {
 	unsigned int _maxiter=250;
 	unsigned int _threadscount=0;
 	unsigned int _diskSize=0;
+	unsigned int _giveUp=0;
 	long double _random=0.025;
 	bool _verbose=false;
 };
