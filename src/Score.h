@@ -15,6 +15,8 @@
 
 #include "NGram.h"
 
+
+
 class Score {
 private:
 	void computeMetrics(const std::string&, const std::unordered_map<unsigned long long, NGram*>&);

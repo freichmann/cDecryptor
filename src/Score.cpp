@@ -49,17 +49,18 @@ void Score::computeMetrics(const std::string& iCandidate, const std::unordered_m
 	for (std::unordered_map<unsigned long long, NGram*>::const_iterator aNormNGram=ipNormNGrams.cbegin(); aNormNGram!=ipNormNGrams.cend(); ++aNormNGram) {
 		std::unordered_map<std::string, unsigned long long> aSolutionCandidateNGram;
 
-		for (unsigned int i=0; i+aNormNGram->second->_length<=iCandidate.length(); i++)
-			aSolutionCandidateNGram.insert(std::pair<std::string, unsigned long long>(iCandidate.substr(i, aNormNGram->second->_length), 0)).first->second++;
+		for (auto i=0; i+aNormNGram->second->_length<=iCandidate.length(); i++)
+			aSolutionCandidateNGram.emplace(iCandidate.substr(i, aNormNGram->second->_length), 0).first->second++;
 
 		long double aScore=0;
 		for (std::unordered_map<std::string, unsigned long long>::const_iterator b=aSolutionCandidateNGram.cbegin(); b!=aSolutionCandidateNGram.cend(); ++b) {
 			std::unordered_map<std::string, unsigned long long>::const_iterator j=aNormNGram->second->_NGramMap.find(b->first);
-			long double aLnP;
+			long double aLnP=-logl(aNormNGram->second->_count);
+
 			if (j!=aNormNGram->second->_NGramMap.end())
-				aLnP=logl(j->second)-logl(aNormNGram->second->_count);
+				aLnP+=logl(j->second);
 			else
-				aLnP=logl(logl(2))-logl(aNormNGram->second->_count);
+				aLnP+=logl(logl(2)); // never seen in language file
 
 			aScore+=b->second*aLnP-lgammal(b->second+1); // Metric: Poisson(b)-Poisson(0) (+const)
 		}

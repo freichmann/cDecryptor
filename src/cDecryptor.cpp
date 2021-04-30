@@ -548,7 +548,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 30.4.2020 12:35" << std::endl;
+		std::cout << "cDecryptor Version 30.4.2020 15:44" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
@@ -570,8 +570,8 @@ int main(int iArgc, char* iArgv[]) {
 			std::cout << "Cipher length after transposition: " << aCipherString.length() << std::endl;
 		}
 
-		std::cout << "Randomize fraction: " << aOptions._random << std::endl;
-		std::cout << "Random re-initialization after " << aOptions._maxiter << " iterations without improvement" << std::endl;
+		std::cout << "Randomize ratio in iteration: " << aOptions._random << std::endl;
+		std::cout << "Full random re-initialization after " << aOptions._maxiter << " iterations without improvement" << std::endl;
 
 		if (aOptions._giveUp==0)
 			std::cout << "Never give up with";
