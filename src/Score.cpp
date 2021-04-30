@@ -43,10 +43,6 @@ Score& Score::operator=(const Score& iThat) {
 	return *this;
 }
 
-long double lnFac(unsigned long long iInt) { // ln(n!)
-	return iInt<2 ? 0 : lgammal(iInt);
-}
-
 void Score::computeMetrics(const std::string& iCandidate, const std::unordered_map<unsigned long long, NGram*>& ipNormNGrams) {
 	_metrics.clear();
 
@@ -65,7 +61,7 @@ void Score::computeMetrics(const std::string& iCandidate, const std::unordered_m
 			else
 				aLnP=logl(logl(2))-logl(aNormNGram->second->_count);
 
-			aScore+=b->second*aLnP-lnFac(b->second+1); // Metric: Poisson(b)-Poisson(0) (+const)
+			aScore+=b->second*aLnP-lgammal(b->second+1); // Metric: Poisson(b)-Poisson(0) (+const)
 		}
 
 		_metrics.insert(std::pair<unsigned long long, long double>(aNormNGram->second->_length, aScore));
