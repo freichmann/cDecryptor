@@ -43,20 +43,18 @@ Score& Score::operator=(const Score& iThat) {
 	return *this;
 }
 
+long double lnFac(unsigned long long iInt) { // ln(n!)
+	return iInt<2 ? 0 : lgammal(iInt);
+}
+
 void Score::computeMetrics(const std::string& iCandidate, const std::unordered_map<unsigned long long, NGram*>& ipNormNGrams) {
 	_metrics.clear();
 
 	for (std::unordered_map<unsigned long long, NGram*>::const_iterator aNormNGram=ipNormNGrams.cbegin(); aNormNGram!=ipNormNGrams.cend(); ++aNormNGram) {
 		std::unordered_map<std::string, unsigned long long> aSolutionCandidateNGram;
 
-		for (unsigned int i=0; i+aNormNGram->second->_length<=iCandidate.length(); i++) {
-			const std::string aSub=iCandidate.substr(i, aNormNGram->second->_length);
-			std::unordered_map<std::string, unsigned long long>::iterator b=aSolutionCandidateNGram.find(aSub);
-			if (b!=aSolutionCandidateNGram.end())
-				b->second++;
-			else
-				aSolutionCandidateNGram.insert(std::pair<std::string, unsigned long long>(aSub, 1));
-		}
+		for (unsigned int i=0; i+aNormNGram->second->_length<=iCandidate.length(); i++)
+			aSolutionCandidateNGram.insert(std::pair<std::string, unsigned long long>(iCandidate.substr(i, aNormNGram->second->_length), 0)).first->second++;
 
 		long double aScore=0;
 		for (std::unordered_map<std::string, unsigned long long>::const_iterator b=aSolutionCandidateNGram.cbegin(); b!=aSolutionCandidateNGram.cend(); ++b) {
@@ -67,7 +65,7 @@ void Score::computeMetrics(const std::string& iCandidate, const std::unordered_m
 			else
 				aLnP=logl(logl(2))-logl(aNormNGram->second->_count);
 
-			aScore+=b->second*aLnP-lgammal(b->second+1); // Metric: Poisson(b)-Poisson(0) (+const)
+			aScore+=b->second*aLnP-lnFac(b->second+1); // Metric: Poisson(b)-Poisson(0) (+const)
 		}
 
 		_metrics.insert(std::pair<unsigned long long, long double>(aNormNGram->second->_length, aScore));

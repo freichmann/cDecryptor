@@ -1,15 +1,17 @@
 cd cDecryptor
 g++ -O3 -pthread src/*.{h,cpp} -o cDecryptor
+# for profiling
+g++ -pg --coverage -Wall -O0 -pthread src/*.{h,cpp} -o cDecryptor
 
 # As root
 echo "core" > /proc/sys/kernel/core_pattern
 ulimit -c unlimited
 
 # 408
-~/git/cDecryptor/cDecryptor -t 4 -r 0.1 -x 100 -w ~/git/Languages/English/sample.txt -l ~/git/Languages/English/1-grams.txt -l ~/git/Languages/English/5-grams.txt -c ~/git/Ciphers/408.zodiac.txt
+~/git/cDecryptor/cDecryptor -t 4 -r 0.1 -x 25 -w ~/git/Languages/English/sample.txt -l ~/git/Languages/English/1-grams.txt -l ~/git/Languages/English/5-grams.txt -c ~/git/Ciphers/408.zodiac.txt
 
 # 340
-~/git/cDecryptor/cDecryptor -t 4 -r 0.1 -x 100 -z ~/git/cDecryptor/Transposition/340.zodiac.transposition.txt -w ~/git/Languages/English/sample.txt -l ~/git/LargeLang/English/1-grams.txt -l ~/git/LargeLang/English/5-grams.txt -c ~/git/Ciphers/340.zodiac.txt
+~/git/cDecryptor/cDecryptor -t 4 -r 0.1 -x 25 -z ~/git/cDecryptor/Transposition/340.zodiac.transposition.txt -w ~/git/Languages/English/sample.txt -l ~/git/LargeLang/English/1-grams.txt -l ~/git/LargeLang/English/5-grams.txt -c ~/git/Ciphers/340.zodiac.txt
 
 # Docker
 sudo docker build ./ --no-cache --rm=true -t m1.fritz.box:444/cdecryptor:latest
