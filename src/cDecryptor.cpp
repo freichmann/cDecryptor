@@ -325,10 +325,11 @@ void hillclimber(const unsigned long long& iThread,
 
 	if (iThread==0 && iOptions._seed.length()>0) {
 		insertSymbols(aCandidateMap, aCandidateVector, iCipherString, iOptions);
-		if (iOptions._verbose)
+		if (iOptions._verbose) {
 			std::cout << "Thread " << iThread << " applied with seed " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
-		if (iOptions._diskSize>0)
-			std::cout << " Map: " << concat(aCandidateVector);
+			if (iOptions._diskSize>0)
+				std::cout << " Map: " << concat(aCandidateVector);
+		}
 		std::cout << std::endl;
 	} else
 		randomMapVecInit(aCandidateMap, aCandidateVector, iCipherString);
@@ -566,7 +567,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 11.5.2021 17:10" << std::endl;
+		std::cout << "cDecryptor Version 11.5.2021 17:43" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
