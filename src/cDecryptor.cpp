@@ -137,7 +137,7 @@ void randomVecInit(std::vector<char> &oLetterVec) {
 void randomMapInit(const std::string &iCipherString, std::unordered_map<char, unsigned int> &oSymbolMap, const unsigned int iSize) {
 	oSymbolMap.clear();
 	std::unordered_set<char> aSymbols = distinctSymbols(iCipherString);
-	std::uniform_int_distribution<unsigned int> aSymbolsDistribution(0, iSize);
+	std::uniform_int_distribution<unsigned int> aSymbolsDistribution(0, iSize-1);
 
 	for (std::unordered_set<char>::iterator i = aSymbols.begin(); i != aSymbols.end(); ++i)
 		oSymbolMap.insert(std::pair<char, unsigned int>(*i, aSymbolsDistribution(aGlobalRandomEngine)));
