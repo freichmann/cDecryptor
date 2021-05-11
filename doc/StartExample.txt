@@ -1,5 +1,6 @@
 cd cDecryptor
 g++ -O3 -pthread src/*.{h,cpp} -o cDecryptor
+
 # for profiling
 g++ -pg --coverage -Wall -O0 -pthread src/*.{h,cpp} -o cDecryptor
 
