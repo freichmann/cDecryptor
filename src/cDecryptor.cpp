@@ -386,11 +386,11 @@ void hillclimber(const unsigned long long& iThread,
 							if (acceptCandidate(aLoopBestScore, aMapCandidateScore)) {
 								aLoopBestScore=aMapCandidateScore;
 								aLoopBestMap=aInnerCandidateMap;
-								aCandidateMap=aInnerCandidateMap;
 								aLoopBestVector=aCandidateVector;
 								if (acceptCandidate(aClimberBestScore, aLoopBestScore)) {
 									aVectorImprovement=true;
 									aClimberBestScore=aLoopBestScore;
+									aCandidateMap=aInnerCandidateMap;
 									aCounterUntilReset=iOptions._maxiter;
 									printIfGlobalBest(aLoopBestScore, iCipherString, iThread, aLoopBestVector, aLoopBestMap, iOptions);
 								}
@@ -569,7 +569,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 11.5.2021 18:16" << std::endl;
+		std::cout << "cDecryptor Version 11.5.2021 18:20" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
