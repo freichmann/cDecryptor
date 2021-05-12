@@ -437,6 +437,7 @@ void hillclimber(const unsigned long long& iThread,
 					aTemperature=aDouble;
 			}
 		}
+
 		randomMapVecInit(aClimberMap, aCandidateVector, iCipherString);
 		aCounterUntilReset=iOptions._maxiter;
 		aTemperature=1.0;
