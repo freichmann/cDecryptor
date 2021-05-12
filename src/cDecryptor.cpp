@@ -112,7 +112,7 @@ std::string buildClear(const std::string& iCipherString, const std::unordered_ma
 		if (iOptions._diskSize==0)
 			iClear+=iVec.at(iMap.find(iCipherString[i])->second);
 		else
-			iClear+=iVec.at((iMap.find(iCipherString[i])->second+i ) % iOptions._diskSize);
+			iClear+=iVec.at((iMap.find(iCipherString[i])->second + i ) % (signed int)iOptions._diskSize);
 	}
 	return iClear;
 }
@@ -551,7 +551,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 12.5.2021 17:26" << std::endl;
+		std::cout << "cDecryptor Version 12.5.2021 17:36" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
