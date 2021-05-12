@@ -86,7 +86,7 @@ bool partiallyShuffleMap(std::unordered_map<char, unsigned int>& iSymbolMap, con
 	return aShuffled;
 }
 
-bool partiallyShuffleLetters(std::vector<char>& iVector, const long double &iRandom) {
+bool partiallyShuffleVector(std::vector<char>& iVector, const long double &iRandom) {
 	std::uniform_int_distribution<unsigned int> aCharDistribution(0, iVector.size());
 	bool aShuffled=false;
 
@@ -330,19 +330,26 @@ void hillclimber(const unsigned long long& iThread,
 
 		std::unordered_map<char, unsigned int> aLoopMap=aClimberMap;
 		std::vector<char> aLoopVector=aClimberVector;
-		RatedScore aLoopScore(Score(iNorms, buildClear(iCipherString, aLoopMap, aLoopVector, iOptions)), aGlobalScoreStatistics);
-
 		{
 			bool aShuffled=false;
 			while (!aShuffled) {
 				aShuffled |= partiallyShuffleMap(aLoopMap, aTemperature*iOptions._random/2.0);
-				aShuffled |= partiallyShuffleLetters(aLoopVector, aTemperature*iOptions._random/4.0);
+				aShuffled |= partiallyShuffleVector(aLoopVector, aTemperature*iOptions._random/4.0);
 			}
 		}
+		RatedScore aLoopScore(Score(iNorms, buildClear(iCipherString, aLoopMap, aLoopVector, iOptions)), aGlobalScoreStatistics);
 
 		while (aCounterUntilReset>0) {
 			{
 				std::unordered_map<char, unsigned int> aCandidateMap=aLoopMap;
+				std::vector<char> aCandidateVector=aLoopVector;
+				{
+					bool aShuffled=false;
+					while (!aShuffled) {
+						aShuffled |= partiallyShuffleMap(aCandidateMap, aTemperature*iOptions._random/2.0);
+						aShuffled |= partiallyShuffleVector(aCandidateVector, aTemperature*iOptions._random/4.0);
+					}
+				}
 				std::string aCandidateString=buildClear(iCipherString, aLoopMap, aLoopVector, iOptions);
 				RatedScore aCandidateScore=RatedScore(Score(iNorms, aCandidateString), aGlobalScoreStatistics);
 
@@ -544,7 +551,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 12.5.2021 14:59" << std::endl;
+		std::cout << "cDecryptor Version 12.5.2021 15:20" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
