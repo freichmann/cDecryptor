@@ -318,52 +318,52 @@ void hillclimber(const unsigned long long& iThread,
 		const Options& iOptions) {
 	unsigned long long aCounterUntilReset=iOptions._maxiter;
 	long double aTemperature=1.0;
-	RatedScore aClimberBestScore;
-	std::unordered_map<char, unsigned int> aCandidateMap;
+	RatedScore aClimberScore;
+	std::unordered_map<char, unsigned int> aClimberMap;
 	std::vector<char> aCandidateVector;
 	unsigned long long aGiveUp=0;
 
 	if (iThread==0 && iOptions._seed.length()>0) {
-		insertSymbols(aCandidateMap, aCandidateVector, iCipherString, iOptions);
+		insertSymbols(aClimberMap, aCandidateVector, iCipherString, iOptions);
 		if (iOptions._verbose) {
-			std::cout << "Thread " << iThread << " applied with seed " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
+			std::cout << "Thread " << iThread << " applied with seed " << buildClear(iCipherString, aClimberMap, aCandidateVector, iOptions);
 			if (iOptions._diskSize>0)
 				std::cout << " Map: " << concat(aCandidateVector);
 		}
 		std::cout << std::endl;
 	} else
-		randomMapVecInit(aCandidateMap, aCandidateVector, iCipherString);
+		randomMapVecInit(aClimberMap, aCandidateVector, iCipherString);
 
 	while (iOptions._giveUp==0 || aGiveUp<=iOptions._giveUp ) {
-		RatedScore aLoopBestScore(Score(iNorms, buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions)), aGlobalScoreStatistics);
+		RatedScore aLoopScore(Score(iNorms, buildClear(iCipherString, aClimberMap, aCandidateVector, iOptions)), aGlobalScoreStatistics);
 		std::unordered_map<char, unsigned int> aLoopBestMap;
 		std::vector<char> aLoopBestVector;
 
 		while (aCounterUntilReset>0 && iOptions._random>0) {
-			std::string aCandidateString=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
+			std::string aCandidateString=buildClear(iCipherString, aClimberMap, aCandidateVector, iOptions);
 			RatedScore aCandidateScore=RatedScore(Score(iNorms, aCandidateString), aGlobalScoreStatistics);
 
 			if (iOptions._verbose)
 				logTime("DEBUG Thread:", iThread, "Start", "Score:", aCandidateScore, "Counter until reset:", aCounterUntilReset, "Cool down:", aTemperature, aCandidateString, concat(aCandidateVector));
 
-			aCandidateScore=optimizeSymbols(aCandidateMap, iCipherString, iOptions, iNorms, aCandidateVector, iThread);
+			aCandidateScore=optimizeSymbols(aClimberMap, iCipherString, iOptions, iNorms, aCandidateVector, iThread);
 
 			if (iOptions._verbose && iOptions._diskSize>0)
-				std::cout << "Symbol step: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
+				std::cout << "Symbol step: " << buildClear(iCipherString, aClimberMap, aCandidateVector, iOptions) << std::endl;
 
-			if (acceptCandidate(aLoopBestScore, aCandidateScore)) {
-				aLoopBestScore=aCandidateScore;
-				aLoopBestMap=aCandidateMap;
+			if (acceptCandidate(aLoopScore, aCandidateScore)) {
+				aLoopScore=aCandidateScore;
+				aLoopBestMap=aClimberMap;
 				aLoopBestVector=aCandidateVector;
-				if (acceptCandidate(aClimberBestScore, aLoopBestScore)) {
-					aClimberBestScore=aLoopBestScore;
+				if (acceptCandidate(aClimberScore, aLoopScore)) {
+					aClimberScore=aLoopScore;
 					aCounterUntilReset=iOptions._maxiter;
 				}
-				printIfGlobalBest(aCandidateScore, iCipherString, iThread, aCandidateVector, aCandidateMap, iOptions);
+				printIfGlobalBest(aCandidateScore, iCipherString, iThread, aCandidateVector, aClimberMap, iOptions);
 			} else {
-				if (TOLERATE==tolerateCandidate( aClimberBestScore, aCandidateScore, aTemperature)) {
-					aLoopBestScore=aCandidateScore;
-					aLoopBestMap=aCandidateMap;
+				if (TOLERATE==tolerateCandidate( aClimberScore, aCandidateScore, aTemperature)) {
+					aLoopScore=aCandidateScore;
+					aLoopBestMap=aClimberMap;
 					aLoopBestVector=aCandidateVector;
 				}
 			}
@@ -373,48 +373,47 @@ void hillclimber(const unsigned long long& iThread,
 				do {
 					aVectorImprovement=false;
 					if (iOptions._verbose && aVectorImprovement)
-						std::cout << "Begin vector iteration: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
+						std::cout << "Begin vector iteration: " << buildClear(iCipherString, aClimberMap, aCandidateVector, iOptions) << std::endl;
 					for (std::vector<char>::iterator aFrom=aCandidateVector.begin(); aFrom!=aCandidateVector.end(); ++aFrom)
 						for (std::vector<char>::iterator aTo=aFrom+1; aTo!=aCandidateVector.end(); ++aTo) {
 							iter_swap(aFrom, aTo);
 							if (iOptions._verbose)
 								std::cout << "Testing vector: " << concat(aCandidateVector) << std::endl;
-							std::unordered_map<char, unsigned int> aInnerCandidateMap(aCandidateMap);
+							std::unordered_map<char, unsigned int> aInnerCandidateMap(aClimberMap);
 
 							RatedScore aMapCandidateScore=optimizeSymbols(aInnerCandidateMap, iCipherString, iOptions, iNorms, aCandidateVector, iThread);
 
-							if (acceptCandidate(aLoopBestScore, aMapCandidateScore)) {
-								aLoopBestScore=aMapCandidateScore;
+							if (acceptCandidate(aLoopScore, aMapCandidateScore)) {
+								aLoopScore=aMapCandidateScore;
 								aLoopBestMap=aInnerCandidateMap;
 								aLoopBestVector=aCandidateVector;
-								if (acceptCandidate(aClimberBestScore, aLoopBestScore)) {
+								if (acceptCandidate(aClimberScore, aLoopScore)) {
 									aVectorImprovement=true;
-									aClimberBestScore=aLoopBestScore;
-									aCandidateMap=aInnerCandidateMap;
+									aClimberScore=aLoopScore;
+									aClimberMap=aInnerCandidateMap;
 									aCounterUntilReset=iOptions._maxiter;
-									printIfGlobalBest(aLoopBestScore, iCipherString, iThread, aLoopBestVector, aLoopBestMap, iOptions);
+									printIfGlobalBest(aLoopScore, iCipherString, iThread, aLoopBestVector, aLoopBestMap, iOptions);
 								}
 							} else {
-								if (REJECT!=tolerateCandidate( aClimberBestScore, aMapCandidateScore, aTemperature)) {
-									aLoopBestScore=aMapCandidateScore;
+								if (REJECT!=tolerateCandidate( aClimberScore, aMapCandidateScore, aTemperature)) {
+									aLoopScore=aMapCandidateScore;
 									aLoopBestMap=aInnerCandidateMap;
-									aCandidateMap=aInnerCandidateMap;
 									aLoopBestVector=aCandidateVector;
 								} else
 									iter_swap(aFrom, aTo);
 							}
 						}
 					if (iOptions._verbose && aVectorImprovement)
-						std::cout << "End vector iteration: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
+						std::cout << "End vector iteration: " << buildClear(iCipherString, aClimberMap, aCandidateVector, iOptions) << std::endl;
 
 				} while (aVectorImprovement);
 
 				if (iOptions._verbose && iOptions._diskSize>0)
-					std::cout << "Vector step: " << buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions) << std::endl;
+					std::cout << "Vector step: " << buildClear(iCipherString, aClimberMap, aCandidateVector, iOptions) << std::endl;
 			}
 
 			if (iOptions._verbose) {
-				std::string aClear=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
+				std::string aClear=buildClear(iCipherString, aClimberMap, aCandidateVector, iOptions);
 				aCandidateScore=RatedScore(Score(iNorms, aClear), aGlobalScoreStatistics);
 
 				logTime("DEBUG Thread:", iThread, "Stuck", "Score:", aCandidateScore, "Counter until reset:", aCounterUntilReset, "Cool down:", aTemperature, aClear, concat(aCandidateVector));
@@ -422,11 +421,11 @@ void hillclimber(const unsigned long long& iThread,
 
 			if (aTemperature*iOptions._random>0) {
 				std::pair<std::vector<char>, std::unordered_map<char, unsigned int>> aBest=getGlobalBest();
-				aCandidateMap=aBest.second;
+				aClimberMap=aBest.second;
 				aCandidateVector=aBest.first;
 				bool aShuffled=false;
 				while (!aShuffled) {
-					aShuffled |= partiallyShuffleMap(aCandidateMap, aTemperature*iOptions._random/2.0);
+					aShuffled |= partiallyShuffleMap(aClimberMap, aTemperature*iOptions._random/2.0);
 					aShuffled |= partiallyShuffleLetters(aCandidateVector, aTemperature*iOptions._random/4.0);
 				}
 			}
@@ -438,7 +437,7 @@ void hillclimber(const unsigned long long& iThread,
 					aTemperature=aDouble;
 			}
 		}
-		randomMapVecInit(aCandidateMap, aCandidateVector, iCipherString);
+		randomMapVecInit(aClimberMap, aCandidateVector, iCipherString);
 		aCounterUntilReset=iOptions._maxiter;
 		aTemperature=1.0;
 
@@ -569,7 +568,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 11.5.2021 18:20" << std::endl;
+		std::cout << "cDecryptor Version 12.5.2021 11:25" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
