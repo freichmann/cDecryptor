@@ -19,5 +19,4 @@ sudo docker build ./ --no-cache --rm=true -t m1.fritz.box:444/cdecryptor:latest
 sudo docker run -d --rm --name cdecryptor -e THREADS="4" -e RANDOMIZE="0.1" -e RESET="100" -e CIPHER="/Ciphers/408.zodiac.txt" -e WORDS="/Languages/English/sample.txt" -e LANG1="/Languages/English/1-grams.txt" -e LANG5="/Languages/English/5-grams.txt" m1.fritz.box:444/cdecryptor:latest
 
 # Kubernetes
-for i in $(kubectl get pods -n cdecryptor | cut -f 1 -d" " | grep -v NAME ); do echo -n "${i}:"; kubectl logs ${i} --tail 1 -n cdecryptor; done;
-for i in $(kubectl get pods -n cdecryptor | cut -f 1 -d" " | grep -v NAME ); do echo -n $(kubectl logs ${i} --tail 1 -n cdecryptor | cut -b 36-); echo " POD: ${i}"; done | sort
+for i in $(kubectl get pods -n cdecryptor | cut -f 1 -d" " | grep -v NAME ); do echo -n $(kubectl logs ${i} -n cdecryptor | grep Score: | tail -n 1 | cut -b 36-); echo " POD: ${i}"; done | sort

@@ -106,19 +106,19 @@ std::unordered_set<char> distinctSymbols(const std::string &iCipherString) {
 	return aSymbols;
 }
 
-std::string buildClear(const std::string& iCipherString, const std::unordered_map<char, unsigned int>& iSymbolMap, const std::vector<char>& iLetterVec, const Options& iOptions) {
+std::string buildClear(const std::string& iCipherString, const std::unordered_map<char, unsigned int>& iMap, const std::vector<char>& iVec, const Options& iOptions) {
 	std::string iClear;
 	for (unsigned int i=0; i<iCipherString.length(); i++) {
 		if (iOptions._diskSize==0)
-			iClear+=iLetterVec.at(iSymbolMap.find(iCipherString[i])->second);
+			iClear+=iVec.at(iMap.find(iCipherString[i])->second);
 		else
-			iClear+=iLetterVec.at((iSymbolMap.find(iCipherString[i])->second + i ) % iOptions._diskSize);
+			iClear+=iVec.at((iMap.find(iCipherString[i])->second+i ) % iOptions._diskSize);
 	}
 	return iClear;
 }
 
-void randomVecInit(std::vector<char> &oLetterVec) {
-	oLetterVec.clear();
+void randomVecInit(std::vector<char> &oVec) {
+	oVec.clear();
 	std::vector<char> aVec;
 
 	for (char c='a'; c<='z'; c++)
@@ -129,43 +129,51 @@ void randomVecInit(std::vector<char> &oLetterVec) {
 	for (unsigned int aI=0; aI<aOriginalVectorSize; aI++) {
 		std::uniform_int_distribution<unsigned int> aIntDistribution(0, aVec.size()-1);
 		unsigned int aPos = aIntDistribution(aGlobalRandomEngine);
-		oLetterVec.push_back(*(aVec.begin()+aPos));
+		oVec.push_back(*(aVec.begin()+aPos));
 		aVec.erase(aVec.begin()+aPos);
 	}
 }
 
-void randomMapInit(const std::string &iCipherString, std::unordered_map<char, unsigned int> &oSymbolMap, const unsigned int iSize) {
-	oSymbolMap.clear();
+void randomMapInit(std::unordered_map<char, unsigned int> &oMap, const std::string &iCipherString, const unsigned int iSize) {
+	oMap.clear();
 	std::unordered_set<char> aSymbols = distinctSymbols(iCipherString);
 	std::uniform_int_distribution<unsigned int> aSymbolsDistribution(0, iSize-1);
 
 	for (std::unordered_set<char>::iterator i = aSymbols.begin(); i != aSymbols.end(); ++i)
-		oSymbolMap.insert(std::pair<char, unsigned int>(*i, aSymbolsDistribution(aGlobalRandomEngine)));
+		oMap.insert(std::pair<char, unsigned int>(*i, aSymbolsDistribution(aGlobalRandomEngine)));
 }
 
 void randomMapVecInit(std::unordered_map<char, unsigned int>& oSymbolMap, std::vector<char>& oLetterVec, const std::string& iCipherString) {
 	randomVecInit(oLetterVec);
-	randomMapInit(iCipherString, oSymbolMap, oLetterVec.size());
+	randomMapInit(oSymbolMap, iCipherString, oLetterVec.size());
 }
 
-void insertSymbols(std::unordered_map<char,unsigned int>& oSymbolMap, std::vector<char>& oLetterVec, const std::string& iCipherString, const Options& iOptions) {
-	oLetterVec.clear();
+std::string concat(const std::vector<char>& iCandidateLetterVector) {
+	std::string aChiffreDisk;
+	for (std::vector<char>::const_iterator i = iCandidateLetterVector.begin();
+			i != iCandidateLetterVector.end(); ++i)
+		aChiffreDisk += (*i);
+	return aChiffreDisk;
+}
+
+void insertSymbols(std::unordered_map<char,unsigned int>& oMap, std::vector<char>& oVec, const std::string& iCipherString, const Options& iOptions) {
+	oVec.clear();
 	if (iOptions._diskSize>0)
 		for (unsigned int i=0; i<iOptions._seedmap.length(); i++)
-			oLetterVec.push_back(iOptions._seedmap.at(i));
+			oVec.push_back(iOptions._seedmap.at(i));
 	else
-		randomVecInit(oLetterVec);
+		randomVecInit(oVec);
 
-	randomMapInit(iCipherString, oSymbolMap, oLetterVec.size());
+	randomMapInit(oMap, iCipherString, oVec.size());
 
 	for (unsigned int i=0; i<std::min(iOptions._seed.length(), iCipherString.length()); i++) {
-		std::vector<char>::iterator aIndex = std::find(oLetterVec.begin(), oLetterVec.end(), iOptions._seed.at(i));
+		std::vector<char>::iterator aVecIndex=std::find(oVec.begin(), oVec.end(), iOptions._seed.at(i));
 
-		if (aIndex != oLetterVec.end()) {
+		if (aVecIndex != oVec.end()) {
 			if (iOptions._diskSize==0)
-				oSymbolMap.find(iCipherString[i])->second=std::distance(oLetterVec.begin(), aIndex);
+				oMap.find(iCipherString[i])->second=std::distance(oVec.begin(), aVecIndex);
 			else
-				oSymbolMap.find(iCipherString[i])->second=(std::distance(oLetterVec.begin(), aIndex)-i) % iOptions._diskSize;
+				oMap.find(iCipherString[i])->second=(std::distance(oVec.begin(), aVecIndex)-i) % (signed int)iOptions._diskSize;
 		}
 	}
 }
@@ -239,14 +247,6 @@ void logTime(Args ... iArgs) {
 	Lock aLock(aGlobalOutputMutex);
 	std::cout << std::put_time(std::localtime(&aNow), "%c") << " ";
 	log(iArgs ...);
-}
-
-std::string concat(const std::vector<char>& iCandidateLetterVector) {
-	std::string aChiffreDisk;
-	for (std::vector<char>::const_iterator i = iCandidateLetterVector.begin();
-			i != iCandidateLetterVector.end(); ++i)
-		aChiffreDisk += (*i);
-	return aChiffreDisk;
 }
 
 bool printIfGlobalBest(const RatedScore& iScore, const std::string& iCipher, const unsigned long long& iThread, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap, const Options& iOptions) {
@@ -551,7 +551,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 12.5.2021 15:20" << std::endl;
+		std::cout << "cDecryptor Version 12.5.2021 17:26" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
