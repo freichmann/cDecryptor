@@ -350,7 +350,7 @@ void hillclimber(const unsigned long long& iThread,
 						aShuffled |= partiallyShuffleVector(aCandidateVector, aTemperature*iOptions._random/4.0);
 					}
 				}
-				std::string aCandidateString=buildClear(iCipherString, aLoopMap, aLoopVector, iOptions);
+				std::string aCandidateString=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
 				RatedScore aCandidateScore=RatedScore(Score(iNorms, aCandidateString), aGlobalScoreStatistics);
 
 				if (iOptions._verbose)
