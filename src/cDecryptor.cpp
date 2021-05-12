@@ -572,13 +572,13 @@ int main(int iArgc, char* iArgv[]) {
 			return EXIT_FAILURE;
 		}
 
-		std::cout << "Full random re-initialization after " << aOptions._maxiter << " iterations without improvement" << std::endl;
+		std::cout << "Re-shuffling from best known solution after " << aOptions._maxiter << " iterations without improvement" << std::endl;
 
 		if (aOptions._giveUp==0)
 			std::cout << "Never give up with";
 		else
 			std::cout << "Give up after " << aOptions._giveUp;
-		std::cout << " random re-initializations" << std::endl;
+		std::cout << " re-shufflings" << std::endl;
 
 		if (aOptions._threadscount==0)
 			aOptions._threadscount = std::thread::hardware_concurrency();
