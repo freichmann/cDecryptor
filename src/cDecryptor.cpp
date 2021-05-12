@@ -143,20 +143,29 @@ void randomMapInit(std::unordered_map<char, unsigned int> &oMap, const std::stri
 		oMap.insert(std::pair<char, unsigned int>(*i, aSymbolsDistribution(aGlobalRandomEngine)));
 }
 
-void randomMapVecInit(std::unordered_map<char, unsigned int>& oSymbolMap, std::vector<char>& oLetterVec, const std::string& iCipherString) {
-	randomVecInit(oLetterVec);
-	randomMapInit(oSymbolMap, iCipherString, oLetterVec.size());
+void randomMapVecInit(std::unordered_map<char, unsigned int>& oMap, std::vector<char>& oVec, const std::string& iCipherString) {
+	randomVecInit(oVec);
+	randomMapInit(oMap, iCipherString, oVec.size());
 }
 
-std::string concat(const std::vector<char>& iCandidateLetterVector) {
-	std::string aChiffreDisk;
-	for (std::vector<char>::const_iterator i = iCandidateLetterVector.begin();
-			i != iCandidateLetterVector.end(); ++i)
-		aChiffreDisk += (*i);
-	return aChiffreDisk;
+std::string concat(const std::vector<char>& iVec) {
+	std::string aString;
+	for (std::vector<char>::const_iterator i = iVec.begin(); i != iVec.end(); ++i)
+		aString += (*i);
+	return aString;
 }
 
-void insertSymbols(std::unordered_map<char,unsigned int>& oMap, std::vector<char>& oVec, const std::string& iCipherString, const Options& iOptions) {
+std::string concat(const std::unordered_map<char, unsigned int>& iMap) {
+	std::string aString;
+	for (std::unordered_map<char, unsigned int>::const_iterator i = iMap.begin(); i != iMap.end(); ++i) {
+		aString += std::to_string(i->first)+":"+std::to_string(i->second);
+		if (i!=iMap.end())
+			aString+=",";
+	}
+	return aString;
+}
+
+void insertSymbols(std::unordered_map<char, unsigned int>& oMap, std::vector<char>& oVec, const std::string& iCipherString, const Options& iOptions) {
 	oVec.clear();
 	if (iOptions._diskSize>0)
 		for (unsigned int i=0; i<iOptions._seedmap.length(); i++)
@@ -171,9 +180,9 @@ void insertSymbols(std::unordered_map<char,unsigned int>& oMap, std::vector<char
 
 		if (aVecIndex != oVec.end()) {
 			if (iOptions._diskSize==0)
-				oMap.find(iCipherString[i])->second=std::distance(oVec.begin(), aVecIndex);
+				oMap.find(iCipherString[i])->second=aVecIndex-oVec.begin();
 			else
-				oMap.find(iCipherString[i])->second=(std::distance(oVec.begin(), aVecIndex)-i) % (signed int)iOptions._diskSize;
+				oMap.find(iCipherString[i])->second=(((aVecIndex-oVec.begin()) % iOptions._diskSize) - (i % iOptions._diskSize) + iOptions._diskSize) % iOptions._diskSize;
 		}
 	}
 }
@@ -181,9 +190,9 @@ void insertSymbols(std::unordered_map<char,unsigned int>& oMap, std::vector<char
 bool checkIfGlobalBest(const RatedScore& iRatedScore, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap) {
 	Lock aLock(aGlobalBestScoreMutex);
 	if (iRatedScore>aGlobalBestScore) {
-		aGlobalBestScore = iRatedScore;
-		aGlobalBestMap = iMap;
-		aGlobalBestVector = iVector;
+		aGlobalBestScore=iRatedScore;
+		aGlobalBestMap=iMap;
+		aGlobalBestVector=iVector;
 		return true;
 	}
 	return false;
@@ -255,7 +264,7 @@ bool printIfGlobalBest(const RatedScore& iScore, const std::string& iCipher, con
 		if (iOptions._diskSize==0)
 			logTime("Thread:", iThread, "Score:", iScore, "-s", iClear);
 		else
-			logTime("Thread:", iThread, "Score:", iScore, "-s", iClear, "-m", concat(iVector));
+			logTime("Thread:", iThread, "Score:", iScore, "-s", iClear, "-m", concat(iVector), concat(iMap));
 		return true;
 	}
 	return false;
@@ -522,7 +531,7 @@ std::string transpose(const std::string& iCipherString, const std::string& iFile
 		}
 		aFile.close();
 		std::cout << "Applying transposition " << aTransposition << std::endl;
-		std::vector<unsigned int> aVector;
+		std::vector<unsigned long long> aVector;
 		std::stringstream aStringStream(aTransposition);
 		for (int i; aStringStream >> i;) {
 			aVector.push_back(i);
@@ -540,7 +549,7 @@ void printCipherStats(std::string& aCipherString) {
 	std::cout << "Cipher: " << aCipherString << std::endl;
 	std::cout << "Cipher length: " << aCipherString.length() << std::endl;
 	std::unordered_set<char> aSymbols;
-	for (unsigned long int i = 0; i < aCipherString.length(); i++)
+	for (unsigned long long i = 0; i < aCipherString.length(); i++)
 		aSymbols.insert(aCipherString.at(i));
 	unsigned int N = aSymbols.size();
 	std::cout << "Cipher Symbols count: " << N << std::endl;
