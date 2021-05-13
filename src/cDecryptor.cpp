@@ -552,7 +552,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 13.5.2021 17:14" << std::endl;
+		std::cout << "cDecryptor Version 13.5.2021 17:56" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
@@ -617,8 +617,6 @@ int main(int iArgc, char* iArgv[]) {
 
 			printIfGlobalBest(RatedScore(Score(aNorms, buildClear(aCipherString, aMap, aVector, aOptions)), aGlobalScoreStatistics), aCipherString, 0, aVector, aMap, aOptions);
 		}
-
-		return EXIT_SUCCESS;
 
 		std::vector<std::thread> aThreads[aOptions._threadscount];
 
