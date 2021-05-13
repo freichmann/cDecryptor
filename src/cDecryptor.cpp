@@ -177,7 +177,7 @@ void insertSymbols(std::unordered_map<char, unsigned int>& oMap, std::vector<cha
 	}
 }
 
-bool checkIfGlobalBest(const RatedScore& iRatedScore, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap) {
+bool acceptIfGlobalBest(const RatedScore& iRatedScore, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap) {
 	Lock aLock(aGlobalBestScoreMutex);
 	if (iRatedScore>aGlobalBestScore) {
 		aGlobalBestScore=iRatedScore;
@@ -249,7 +249,7 @@ void logTime(Args ... iArgs) {
 }
 
 bool printIfGlobalBest(const RatedScore& iScore, const std::string& iCipher, const unsigned long long& iThread, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap, const Options& iOptions) {
-	if (checkIfGlobalBest(iScore, iVector, iMap)) {
+	if (acceptIfGlobalBest(iScore, iVector, iMap)) {
 		std::string iClear=buildClear(iCipher, iMap, iVector, iOptions);
 		if (iOptions._diskSize==0)
 			logTime("Thread:", iThread, "Score:", iScore, "-s", iClear);
@@ -617,6 +617,8 @@ int main(int iArgc, char* iArgv[]) {
 
 			printIfGlobalBest(RatedScore(Score(aNorms, buildClear(aCipherString, aMap, aVector, aOptions)), aGlobalScoreStatistics), aCipherString, 0, aVector, aMap, aOptions);
 		}
+
+		return EXIT_SUCCESS;
 
 		std::vector<std::thread> aThreads[aOptions._threadscount];
 
