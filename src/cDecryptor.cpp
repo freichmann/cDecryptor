@@ -155,16 +155,6 @@ std::string concat(const std::vector<char>& iVec) {
 	return aString;
 }
 
-std::string concat(const std::unordered_map<char, unsigned int>& iMap) {
-	std::string aString;
-	for (std::unordered_map<char, unsigned int>::const_iterator i = iMap.begin(); i != iMap.end(); ++i) {
-		aString += std::to_string(i->first)+":"+std::to_string(i->second);
-		if (i!=iMap.end())
-			aString+=",";
-	}
-	return aString;
-}
-
 void insertSymbols(std::unordered_map<char, unsigned int>& oMap, std::vector<char>& oVec, const std::string& iCipherString, const Options& iOptions) {
 	oVec.clear();
 	if (iOptions._diskSize>0)
@@ -264,7 +254,7 @@ bool printIfGlobalBest(const RatedScore& iScore, const std::string& iCipher, con
 		if (iOptions._diskSize==0)
 			logTime("Thread:", iThread, "Score:", iScore, "-s", iClear);
 		else
-			logTime("Thread:", iThread, "Score:", iScore, "-s", iClear, "-m", concat(iVector), concat(iMap));
+			logTime("Thread:", iThread, "Score:", iScore, "-s", iClear, "-m", concat(iVector));
 		return true;
 	}
 	return false;
