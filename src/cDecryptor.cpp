@@ -616,6 +616,8 @@ int main(int iArgc, char* iArgv[]) {
 				randomMapVecInit(aMap, aVector, aCipherString);
 
 			printIfGlobalBest(RatedScore(Score(aNorms, buildClear(aCipherString, aMap, aVector, aOptions)), aGlobalScoreStatistics), aCipherString, 0, aVector, aMap, aOptions);
+			optimizeSymbols(aMap, aCipherString, aOptions, aNorms, aVector, 0);
+			printIfGlobalBest(RatedScore(Score(aNorms, buildClear(aCipherString, aMap, aVector, aOptions)), aGlobalScoreStatistics), aCipherString, 0, aVector, aMap, aOptions);
 		}
 
 		std::vector<std::thread> aThreads[aOptions._threadscount];
