@@ -34,6 +34,10 @@ bool RatedScore::operator==(const RatedScore& iThat) const {
 	return this->value()==iThat.value();
 }
 
+bool RatedScore::operator!=(const RatedScore& iThat) const {
+	return !(this->value()==iThat.value());
+}
+
 const long double RatedScore::value() const {
 	return _rated;
 }

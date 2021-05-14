@@ -23,6 +23,7 @@ public:
 	bool operator>(const RatedScore&) const;
 	bool operator<(const RatedScore&) const;
 	bool operator==(const RatedScore&) const;
+	bool operator!=(const RatedScore&) const;
 	RatedScore& operator=(const RatedScore&);
 	friend std::ostream& operator<<(std::ostream&, const RatedScore&);
 	const long double value() const;
