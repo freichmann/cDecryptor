@@ -47,13 +47,13 @@ void Score::computeMetrics(const std::string& iCandidate, const std::unordered_m
 	_metrics.clear();
 
 	for (std::unordered_map<unsigned long long, NGram*>::const_iterator aNormNGram=ipNormNGrams.cbegin(); aNormNGram!=ipNormNGrams.cend(); ++aNormNGram) {
-		std::unordered_map<std::string, unsigned long long> aSolutionCandidateNGram;
+		std::unordered_map<std::string, unsigned long long> aCandidateNGram;
 
 		for (auto i=0; i+aNormNGram->second->_length<=iCandidate.length(); i++)
-			aSolutionCandidateNGram.emplace(iCandidate.substr(i, aNormNGram->second->_length), 0).first->second++;
+			aCandidateNGram.emplace(iCandidate.substr(i, aNormNGram->second->_length), 0).first->second++;
 
 		long double aScore=0;
-		for (std::unordered_map<std::string, unsigned long long>::const_iterator b=aSolutionCandidateNGram.cbegin(); b!=aSolutionCandidateNGram.cend(); ++b) {
+		for (std::unordered_map<std::string, unsigned long long>::const_iterator b=aCandidateNGram.cbegin(); b!=aCandidateNGram.cend(); ++b) {
 			std::unordered_map<std::string, unsigned long long>::const_iterator j=aNormNGram->second->_NGramMap.find(b->first);
 			long double aLnP=-logl(aNormNGram->second->_count);
 

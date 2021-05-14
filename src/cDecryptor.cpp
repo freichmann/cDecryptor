@@ -349,16 +349,14 @@ void hillclimber(const unsigned long long& iThread,
 						aShuffled |= partiallyShuffleVector(aCandidateVector, aTemperature*iOptions._random/4.0);
 					}
 				}
-				std::string aCandidateString=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
-				RatedScore aCandidateScore=RatedScore(Score(iNorms, aCandidateString), aGlobalScoreStatistics);
 
-				if (iOptions._verbose)
-					logTime("DEBUG Thread:", iThread, "Start", "Score:", aCandidateScore, "Counter until reset:", aCounterUntilReset, "Cool down:", aTemperature, aCandidateString, concat(aClimberVector));
+				if (iOptions._verbose) {
+					std::string aStartString=buildClear(iCipherString, aCandidateMap, aCandidateVector, iOptions);
+					RatedScore aStartScore=RatedScore(Score(iNorms, aStartString), aGlobalScoreStatistics);
+					logTime("DEBUG Thread:", iThread, "Start", "Score:", aStartScore, "Counter until reset:", aCounterUntilReset, "Cool down:", aTemperature, aStartString, concat(aClimberVector));
+				}
 
-				aCandidateScore=optimizeSymbols(aCandidateMap, iCipherString, iOptions, iNorms, aLoopVector, iThread);
-
-				if (iOptions._verbose && iOptions._diskSize>0)
-					std::cout << "Symbol step: " << buildClear(iCipherString, aCandidateMap, aLoopVector, iOptions) << std::endl;
+				RatedScore aCandidateScore=optimizeSymbols(aCandidateMap, iCipherString, iOptions, iNorms, aLoopVector, iThread);
 
 				if (acceptCandidate(aLoopScore, aCandidateScore) || TOLERATE==tolerateCandidate( aLoopScore, aCandidateScore, aTemperature)) {
 					aLoopScore=aCandidateScore;
@@ -375,11 +373,12 @@ void hillclimber(const unsigned long long& iThread,
 			}
 
 			if (iOptions._diskSize>0) {
+				if (iOptions._verbose)
+					std::cout << "After symbol step: " << buildClear(iCipherString, aLoopMap, aLoopVector, iOptions) << std::endl;
+
 				bool aVectorImprovement;
 				do {
 					aVectorImprovement=false;
-					if (iOptions._verbose && aVectorImprovement)
-						std::cout << "Begin vector iteration: " << buildClear(iCipherString, aLoopMap, aLoopVector, iOptions) << std::endl;
 					std::vector<char> aCandidateVector=aLoopVector;
 					for (std::vector<char>::iterator aFrom=aCandidateVector.begin(); aFrom!=aCandidateVector.end(); ++aFrom)
 						for (std::vector<char>::iterator aTo=aFrom+1; aTo!=aCandidateVector.end(); ++aTo) {
@@ -405,11 +404,10 @@ void hillclimber(const unsigned long long& iThread,
 							} else
 								iter_swap(aFrom, aTo);
 						}
-					if (iOptions._verbose && aVectorImprovement)
-						std::cout << "End vector iteration: " << buildClear(iCipherString, aLoopMap, aLoopVector, iOptions) << std::endl;
 				} while (aVectorImprovement);
-				if (iOptions._verbose && iOptions._diskSize>0)
-					std::cout << "Vector step: " << buildClear(iCipherString, aLoopMap, aLoopVector, iOptions) << std::endl;
+
+				if (iOptions._verbose)
+					std::cout << "After vector step: " << buildClear(iCipherString, aLoopMap, aLoopVector, iOptions) << std::endl;
 			}
 
 			if (iOptions._verbose) {
@@ -428,7 +426,7 @@ void hillclimber(const unsigned long long& iThread,
 
 		aGiveUp++;
 		if (iOptions._verbose)
-			logTime("DEBUG Thread:", iThread, "Re-shuffling best known, attempt", aGiveUp);
+			logTime("DEBUG Thread:", iThread, "Re-shuffling from best known, attempt", aGiveUp);
 	}
 }
 
@@ -552,7 +550,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 13.5.2021 17:56" << std::endl;
+		std::cout << "cDecryptor Version 14.5.2021 10:10" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
