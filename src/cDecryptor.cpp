@@ -177,10 +177,10 @@ void insertSymbols(std::unordered_map<char, unsigned int>& oMap, std::vector<cha
 	}
 }
 
-bool acceptIfGlobalBest(const RatedScore& iRatedScore, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap) {
+bool acceptIfGlobalBest(const RatedScore& iScore, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap) {
 	Lock aLock(aGlobalBestScoreMutex);
-	if (iRatedScore>aGlobalBestScore) {
-		aGlobalBestScore=iRatedScore;
+	if (iScore>aGlobalBestScore) {
+		aGlobalBestScore=iScore;
 		aGlobalBestMap=iMap;
 		aGlobalBestVector=iVector;
 		return true;
@@ -260,12 +260,8 @@ bool printIfGlobalBest(const RatedScore& iScore, const std::string& iCipher, con
 	return false;
 }
 
-bool acceptCandidate(const RatedScore& iPreviousScore, const RatedScore& iCandidateScore) {
-	return (std::isnan(iPreviousScore.value()) || iCandidateScore > iPreviousScore);
-}
-
 Decision tolerateCandidate(const RatedScore& iBestScore, const RatedScore& iCandidateScore, long double iTemperature) {
-	if (acceptCandidate(iBestScore, iCandidateScore))
+	if (iCandidateScore>iBestScore)
 		return ACCEPT;
 	else {
 		if (
@@ -298,7 +294,7 @@ RatedScore optimizeSymbols(
 					aMappedSymbol->second = i;
 					std::string aCandidateString = buildClear(iCipherString, oCandidateMap, iCandidateVector, iOptions);
 					RatedScore aCandidateScore( Score(iNorms, aCandidateString), aGlobalScoreStatistics);
-					if (acceptCandidate(aBestScore, aCandidateScore)) {
+					if (aCandidateScore > aBestScore) {
 						aBestScore=aCandidateScore;
 						aBestSymbolSoFar = i;
 						aSymbolsChanged = true;
@@ -358,11 +354,11 @@ void hillclimber(const unsigned long long& iThread,
 
 				RatedScore aCandidateScore=optimizeSymbols(aCandidateMap, iCipherString, iOptions, iNorms, aLoopVector, iThread);
 
-				if (acceptCandidate(aLoopScore, aCandidateScore) || TOLERATE==tolerateCandidate( aLoopScore, aCandidateScore, aTemperature)) {
+				if (aCandidateScore>aLoopScore || TOLERATE==tolerateCandidate( aLoopScore, aCandidateScore, aTemperature)) {
 					aLoopScore=aCandidateScore;
 					aLoopMap=aCandidateMap;
 					aLoopVector=aCandidateVector;
-					if (acceptCandidate(aClimberScore, aCandidateScore)) {
+					if (aCandidateScore>aClimberScore) {
 						aClimberScore=aCandidateScore;
 						aClimberMap=aCandidateMap;
 						aClimberVector=aCandidateVector;
@@ -389,11 +385,11 @@ void hillclimber(const unsigned long long& iThread,
 							std::unordered_map<char, unsigned int> aCandidateMap(aLoopMap);
 							RatedScore aCandidateScore=optimizeSymbols(aCandidateMap, iCipherString, iOptions, iNorms, aCandidateVector, iThread);
 
-							if (acceptCandidate(aLoopScore, aCandidateScore) || TOLERATE==tolerateCandidate( aClimberScore, aCandidateScore, aTemperature)) {
+							if (aCandidateScore>aLoopScore || TOLERATE==tolerateCandidate( aClimberScore, aCandidateScore, aTemperature)) {
 								aLoopScore=aCandidateScore;
 								aLoopMap=aCandidateMap;
 								aLoopVector=aCandidateVector;
-								if (acceptCandidate(aClimberScore, aCandidateScore)) {
+								if (aCandidateScore>aClimberScore) {
 									aVectorImprovement=true;
 									aClimberScore=aCandidateScore;
 									aClimberMap=aCandidateMap;
@@ -550,7 +546,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 14.5.2021 10:10" << std::endl;
+		std::cout << "cDecryptor Version 14.5.2021 10:36" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());

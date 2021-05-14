@@ -22,8 +22,9 @@ public:
 	RatedScore(const Score&, const std::unordered_map<unsigned long long, GaussianNorm>&);
 	bool operator>(const RatedScore&) const;
 	bool operator<(const RatedScore&) const;
-	friend std::ostream& operator<<(std::ostream&, const RatedScore&);
+	bool operator==(const RatedScore&) const;
 	RatedScore& operator=(const RatedScore&);
+	friend std::ostream& operator<<(std::ostream&, const RatedScore&);
 	const long double value() const;
 };
 

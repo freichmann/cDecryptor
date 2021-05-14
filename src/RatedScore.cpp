@@ -23,11 +23,15 @@ RatedScore::RatedScore(const Score& iScore, const std::unordered_map<unsigned lo
 }
 
 bool RatedScore::operator>(const RatedScore& iThat) const {
-	return this->value()>iThat.value();
+	return std::isnan(iThat.value()) || this->value()>iThat.value();
 }
 
 bool RatedScore::operator<(const RatedScore& iThat) const {
-	return this->value()<iThat.value();
+	return !(this->value()>iThat.value() || (*this)==iThat);
+}
+
+bool RatedScore::operator==(const RatedScore& iThat) const {
+	return this->value()==iThat.value();
 }
 
 const long double RatedScore::value() const {
