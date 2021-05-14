@@ -355,7 +355,7 @@ void hillclimber(const unsigned long long& iThread,
 
 				RatedScore aCandidateScore=optimizeSymbols(aCandidateMap, iCipher, iOptions, iNorms, aLoopVector, iThread);
 
-				if (aCandidateScore>aLoopScore || TOLERATE==tolerateCandidate( aLoopScore, aCandidateScore, aTemperature)) {
+				if (aCandidateScore>aLoopScore) {
 					aLoopScore=aCandidateScore;
 					aLoopMap=aCandidateMap;
 					aLoopVector=aCandidateVector;
@@ -406,7 +406,7 @@ void hillclimber(const unsigned long long& iThread,
 							std::unordered_map<char, unsigned int> aCandidateMap(aLoopMap);
 							RatedScore aCandidateScore=optimizeSymbols(aCandidateMap, iCipher, iOptions, iNorms, aCandidateVector, iThread);
 
-							if (aCandidateScore>aLoopScore || TOLERATE==tolerateCandidate( aClimberScore, aCandidateScore, aTemperature)) {
+							if (aCandidateScore>aLoopScore) {
 								aLoopScore=aCandidateScore;
 								aLoopMap=aCandidateMap;
 								aLoopVector=aCandidateVector;
@@ -565,7 +565,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 14.5.2021 13:15" << std::endl;
+		std::cout << "cDecryptor Version 14.5.2021 13:35" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
