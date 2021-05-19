@@ -571,15 +571,22 @@ int main(int iArgc, char* iArgv[]) {
 		std::unordered_map<unsigned long long, NGram*> aNorms;
 		readNorms(aOptions._ngramsfiles, aNorms);
 
+		if (aOptions._seed.length()>0) {
+			std::cout << "Seed: " << aOptions._seed << std::endl;
+			if (aOptions._diskSize>0) {
+				if (aOptions._seedmap.length()>0)
+					std::cout << "Map: " << aOptions._seedmap << std::endl;
+				else {
+					std::cout << "Seed for chiffre disk only with providing map." << std::endl;
+					return EXIT_FAILURE;
+				}
+			}
+		}
+
 		std::cout << "Building statistics of scores of sample text file " << aOptions._textfile << " for snippets of length " << aCipherString.length() << std::endl;
 		computeScoreStatistics(aOptions._textfile, aNorms, aCipherString);
 
 		printBestPossibleScore(aNorms);
-
-		if (aOptions._seed.length()>0 && aOptions._diskSize>0 && aOptions._seedmap.length()==0) {
-			std::cout << "Seed for chiffre disk only with providing map." << std::endl;
-			return EXIT_FAILURE;
-		}
 
 		{
 			std::vector<char> aVector;
