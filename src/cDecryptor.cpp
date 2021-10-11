@@ -181,17 +181,6 @@ void insertSymbols(std::unordered_map<char, unsigned int>& oMap, std::vector<cha
 	}
 }
 
-bool acceptIfGlobalBest(const RatedScore& iScore, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap) {
-	Lock aLock(aGlobalBestScoreMutex);
-	if (iScore>aGlobalBestScore) {
-		aGlobalBestScore=iScore;
-		aGlobalBestMap=iMap;
-		aGlobalBestVector=iVector;
-		return true;
-	}
-	return false;
-}
-
 std::pair<const std::vector<char>, const std::unordered_map<char, unsigned int>> getGlobalBest() {
 	Lock aLock(aGlobalBestScoreMutex);
 
@@ -252,13 +241,34 @@ void logTime(Args ... iArgs) {
 	log(iArgs ...);
 }
 
+void printGlobalBest(const std::string &iCipher, const std::unordered_map<char, unsigned int> &iMap, const std::vector<char> &iVector, const Options &iOptions, const unsigned long long &iThread, const RatedScore &iScore) {
+	std::string iClear = buildClear(iCipher, iMap, iVector, iOptions);
+	if (iOptions._diskSize == 0)
+		logTime("Thread:", iThread, "Score:", iScore, "-s", iClear);
+	else
+		logTime("Thread:", iThread, "Score:", iScore, "-s", iClear, "-m", concat(iVector));
+}
+
+bool acceptIfGlobalBest(const RatedScore& iScore, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap, bool iForce) {
+	Lock aLock(aGlobalBestScoreMutex);
+	if (iForce || iScore>aGlobalBestScore) {
+		aGlobalBestScore=iScore;
+		aGlobalBestMap=iMap;
+		aGlobalBestVector=iVector;
+		return true;
+	}
+	return false;
+}
+
+bool setGlobalBest(const RatedScore& iScore, const std::string& iCipher, const unsigned long long& iThread, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap, const Options& iOptions) {
+	acceptIfGlobalBest(iScore, iVector, iMap, true);
+	printGlobalBest(iCipher, iMap, iVector, iOptions, iThread, iScore);
+	return true;
+}
+
 bool printIfGlobalBest(const RatedScore& iScore, const std::string& iCipher, const unsigned long long& iThread, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap, const Options& iOptions) {
-	if (acceptIfGlobalBest(iScore, iVector, iMap)) {
-		std::string iClear=buildClear(iCipher, iMap, iVector, iOptions);
-		if (iOptions._diskSize==0)
-			logTime("Thread:", iThread, "Score:", iScore, "-s", iClear);
-		else
-			logTime("Thread:", iThread, "Score:", iScore, "-s", iClear, "-m", concat(iVector));
+	if (acceptIfGlobalBest(iScore, iVector, iMap, false)) {
+		printGlobalBest(iCipher, iMap, iVector, iOptions, iThread, iScore);
 		return true;
 	}
 	return false;
@@ -287,6 +297,7 @@ RatedScore optimizeSymbols(
 		const std::vector<char>& iCandidateVector,
 		const unsigned long long& iThread) {
 	RatedScore aBestScore;
+	bool aFirst=true;
 	bool aSymbolsChanged;
 
 	do {
@@ -298,11 +309,12 @@ RatedScore optimizeSymbols(
 				if (i != aBefore) {
 					aMappedSymbol->second = i;
 					std::string aCandidateString = buildClear(iCipherString, oCandidateMap, iCandidateVector, iOptions);
-					RatedScore aCandidateScore( Score(iNorms, aCandidateString), aGlobalScoreStatistics);
-					if (aCandidateScore > aBestScore) {
+					RatedScore aCandidateScore(Score(iNorms, aCandidateString), aGlobalScoreStatistics);
+					if (aCandidateScore>aBestScore || aFirst) {
 						aBestScore=aCandidateScore;
 						aBestSymbolSoFar = i;
 						aSymbolsChanged = true;
+						aFirst=false;
 					}
 				}
 			aMappedSymbol->second = aBestSymbolSoFar;
@@ -532,7 +544,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 14.5.2021 14:25" << std::endl;
+		std::cout << "cDecryptor Version 11.10.2021 16:14" << std::endl;
 		std::cout << std::setprecision(17);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
@@ -601,9 +613,9 @@ int main(int iArgc, char* iArgv[]) {
 			else
 				randomMapVecInit(aMap, aVector, aCipherString);
 
-			printIfGlobalBest(RatedScore(Score(aNorms, buildClear(aCipherString, aMap, aVector, aOptions)), aGlobalScoreStatistics), aCipherString, 0, aVector, aMap, aOptions);
 			optimizeSymbols(aMap, aCipherString, aOptions, aNorms, aVector, 0);
-			printIfGlobalBest(RatedScore(Score(aNorms, buildClear(aCipherString, aMap, aVector, aOptions)), aGlobalScoreStatistics), aCipherString, 0, aVector, aMap, aOptions);
+
+			setGlobalBest(RatedScore(Score(aNorms, buildClear(aCipherString, aMap, aVector, aOptions)), aGlobalScoreStatistics), aCipherString, 0, aVector, aMap, aOptions);
 		}
 
 		std::vector<std::thread> aThreads[aOptions._threadscount];
@@ -613,18 +625,21 @@ int main(int iArgc, char* iArgv[]) {
 
 		logTime(aOptions._threadscount, "threads started.");
 
-		for (std::vector<std::thread>::iterator i=aThreads->begin(); i!=aThreads->end(); ++i)
-			(*i).join();
+		for (std::vector<std::thread>::iterator i=aThreads->begin(); i!=aThreads->end(); ++i) {
+			i->join();
+		}
 
 		for (std::unordered_map<unsigned long long, NGram*>::iterator aI=aNorms.begin(); aI!=aNorms.end(); ++aI)
 			delete aI->second;
 	}
 	catch (std::string& iString) {
-		std::cerr << "Error caught: " << iString << std::endl;
+		std::cerr << "Error: " << iString << std::endl;
 	}
 	catch (...) {
-		std::cerr << "Unhandled error caught." << std::endl;
+		std::cerr << "Unspecified error." << std::endl;
 	}
+
+	std::cout << "Program terminated." << std::endl;
 
 	return EXIT_SUCCESS;
 }
