@@ -244,9 +244,9 @@ void logTime(Args ... iArgs) {
 void printGlobalBest(const std::string &iCipher, const std::unordered_map<char, unsigned int> &iMap, const std::vector<char> &iVector, const Options &iOptions, const unsigned long long &iThread, const RatedScore &iScore) {
 	std::string iClear = buildClear(iCipher, iMap, iVector, iOptions);
 	if (iOptions._diskSize == 0)
-		logTime("Thread:", iThread, "Score:", iScore, "-s", iClear);
+		logTime("Thread:", iThread, "Score:", iScore, iClear);
 	else
-		logTime("Thread:", iThread, "Score:", iScore, "-s", iClear, "-m", concat(iVector));
+		logTime("Thread:", iThread, "Score:", iScore, iClear, concat(iVector));
 }
 
 // not thread safe
@@ -543,7 +543,7 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 12.10.2021 10:41" << std::endl;
+		std::cout << "cDecryptor Version 12.10.2021 14:23" << std::endl;
 		std::cout << std::setprecision(16);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
