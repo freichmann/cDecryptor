@@ -249,25 +249,24 @@ void printGlobalBest(const std::string &iCipher, const std::unordered_map<char, 
 		logTime("Thread:", iThread, "Score:", iScore, "-s", iClear, "-m", concat(iVector));
 }
 
-bool acceptIfGlobalBest(const RatedScore& iScore, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap, bool iForce) {
+// not thread safe
+void setGlobalBest(const RatedScore &iScore, const std::unordered_map<char, unsigned int> &iMap, const std::vector<char> &iVector) {
+	aGlobalBestScore = iScore;
+	aGlobalBestMap = iMap;
+	aGlobalBestVector = iVector;
+}
+
+bool acceptIfGlobalBest(const RatedScore& iScore, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap) {
 	Lock aLock(aGlobalBestScoreMutex);
-	if (iForce || iScore>aGlobalBestScore) {
-		aGlobalBestScore=iScore;
-		aGlobalBestMap=iMap;
-		aGlobalBestVector=iVector;
+	if (iScore>aGlobalBestScore) {
+		setGlobalBest(iScore, iMap, iVector);
 		return true;
 	}
 	return false;
 }
 
-bool setGlobalBest(const RatedScore& iScore, const std::string& iCipher, const unsigned long long& iThread, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap, const Options& iOptions) {
-	acceptIfGlobalBest(iScore, iVector, iMap, true);
-	printGlobalBest(iCipher, iMap, iVector, iOptions, iThread, iScore);
-	return true;
-}
-
 bool printIfGlobalBest(const RatedScore& iScore, const std::string& iCipher, const unsigned long long& iThread, const std::vector<char>& iVector, const std::unordered_map<char, unsigned int>& iMap, const Options& iOptions) {
-	if (acceptIfGlobalBest(iScore, iVector, iMap, false)) {
+	if (acceptIfGlobalBest(iScore, iVector, iMap)) {
 		printGlobalBest(iCipher, iMap, iVector, iOptions, iThread, iScore);
 		return true;
 	}
@@ -420,7 +419,7 @@ void hillclimber(const unsigned long long& iThread,
 
 		aGiveUp++;
 		if (iOptions._verbose)
-			logTime("DEBUG Thread:", iThread, "Re-shuffling from best known, attempt", aGiveUp);
+			logTime("DEBUG Thread:", iThread, "Iteration", aGiveUp, "Re-shuffling from best known");
 	}
 }
 
@@ -544,8 +543,8 @@ void printCipherStats(std::string& aCipherString) {
 
 int main(int iArgc, char* iArgv[]) {
 	try {
-		std::cout << "cDecryptor Version 11.10.2021 16:14" << std::endl;
-		std::cout << std::setprecision(17);
+		std::cout << "cDecryptor Version 12.10.2021 10:41" << std::endl;
+		std::cout << std::setprecision(16);
 		signal(SIGINT, signalHandler);
 		aGlobalRandomEngine.seed(std::chrono::system_clock::now().time_since_epoch().count());
 
@@ -615,7 +614,7 @@ int main(int iArgc, char* iArgv[]) {
 
 			optimizeSymbols(aMap, aCipherString, aOptions, aNorms, aVector, 0);
 
-			setGlobalBest(RatedScore(Score(aNorms, buildClear(aCipherString, aMap, aVector, aOptions)), aGlobalScoreStatistics), aCipherString, 0, aVector, aMap, aOptions);
+			setGlobalBest(RatedScore(Score(aNorms, buildClear(aCipherString, aMap, aVector, aOptions)), aGlobalScoreStatistics), aMap, aVector);
 		}
 
 		std::vector<std::thread> aThreads[aOptions._threadscount];
@@ -625,9 +624,8 @@ int main(int iArgc, char* iArgv[]) {
 
 		logTime(aOptions._threadscount, "threads started.");
 
-		for (std::vector<std::thread>::iterator i=aThreads->begin(); i!=aThreads->end(); ++i) {
+		for (std::vector<std::thread>::iterator i=aThreads->begin(); i!=aThreads->end(); ++i)
 			i->join();
-		}
 
 		for (std::unordered_map<unsigned long long, NGram*>::iterator aI=aNorms.begin(); aI!=aNorms.end(); ++aI)
 			delete aI->second;
